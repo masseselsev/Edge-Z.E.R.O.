@@ -3,7 +3,7 @@ set -e
 
 # Ensure PXE files are in the volume
 echo "Syncing PXE boot files..."
-cp -n /tftpboot/* /mnt/infra_config/tftp/
+cp -rn /tftpboot/* /mnt/infra_config/tftp/
 
 # Prepare UEFI files
 mkdir -p /tftpboot/grub
