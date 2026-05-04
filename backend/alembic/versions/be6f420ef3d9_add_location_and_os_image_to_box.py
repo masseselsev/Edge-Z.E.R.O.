@@ -24,21 +24,21 @@ def upgrade() -> None:
     inspector = sa.inspect(conn)
     columns = [c['name'] for c in inspector.get_columns('boxes')]
     
+    # Get existing foreign keys
+    fks = inspector.get_foreign_keys('boxes')
+    fk_names = [fk['name'] for fk in fks]
+    
     if 'os_image_id' not in columns:
         op.add_column('boxes', sa.Column('os_image_id', sa.UUID(), nullable=True))
     
     # Update foreign keys with ON DELETE SET NULL
     # We drop and recreate them to ensure they have the correct ondelete property
-    try:
+    if 'boxes_location_id_fkey' in fk_names:
         op.drop_constraint('boxes_location_id_fkey', 'boxes', type_='foreignkey')
-    except Exception:
-        pass
     op.create_foreign_key('boxes_location_id_fkey', 'boxes', 'locations', ['location_id'], ['id'], ondelete='SET NULL')
     
-    try:
+    if 'boxes_os_image_id_fkey' in fk_names:
         op.drop_constraint('boxes_os_image_id_fkey', 'boxes', type_='foreignkey')
-    except Exception:
-        pass
     op.create_foreign_key('boxes_os_image_id_fkey', 'boxes', 'os_images', ['os_image_id'], ['id'], ondelete='SET NULL')
 
 
