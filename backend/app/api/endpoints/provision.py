@@ -156,7 +156,7 @@ async def get_boot_ipxe(mac: str, db: AsyncSession = Depends(get_db)):
         script = f"""#!ipxe
 echo Starting Overwatch Network Installer for MAC {mac}
 echo Using image: {image_dir} (Kernel: {kernel_file}, Initrd: {initrd_file})
-kernel {kernel} auto=true priority=critical url={preseed_url} interface=auto
+kernel {kernel} initrd={initrd_file} auto=true priority=critical url={preseed_url} interface=auto
 initrd {initrd}
 boot
 """
