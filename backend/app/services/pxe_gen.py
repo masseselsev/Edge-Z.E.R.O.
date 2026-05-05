@@ -10,7 +10,7 @@ INFRA_CONFIG_DIR = "/mnt/infra_config"
 DNSMASQ_ETHERS_FILE = os.path.join(INFRA_CONFIG_DIR, "dnsmasq.ethers")
 TFTP_ROOT = os.path.join(INFRA_CONFIG_DIR, "tftp")
 PXE_CFG_DIR = os.path.join(TFTP_ROOT, "pxelinux.cfg")
-GRUB_CFG_DIR = os.path.join(TFTP_ROOT, "grub")
+GRUB_CFG_DIR = os.path.join(TFTP_ROOT, "boot/grub")
 
 async def generate_pxe_config(db: AsyncSession):
     """
@@ -64,8 +64,8 @@ set default=0
 regexp --set=m1 --set=m2 --set=m3 --set=m4 --set=m5 --set=m6 '^([0-9a-f]+):([0-9a-f]+):([0-9a-f]+):([0-9a-f]+):([0-9a-f]+):([0-9a-f]+)$' "$net_default_mac"
 set mac_dash="${m1}-${m2}-${m3}-${m4}-${m5}-${m6}"
 
-# Try to load from /grub/ folder
-configfile /grub/grub.cfg-01-${mac_dash}
+# Try to load from /boot/grub/ folder
+configfile /boot/grub/grub.cfg-01-${mac_dash}
 
 # Fallback: Try root just in case
 configfile /grub.cfg-01-${mac_dash}
