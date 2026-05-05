@@ -141,6 +141,18 @@ async def provision_callback(mac: str, db: AsyncSession = Depends(get_db)):
 
 from app.core.config import settings
 
+@router.get("/boot.ipxe")
+async def get_generic_boot_script():
+    """
+    Generic iPXE boot script that chains to the MAC-specific one.
+    """
+    script = [
+        "#!ipxe",
+        f"chain http://{settings.API_HOST}:{settings.API_PORT}/api/provision/${{mac:hexhyp}}/boot.ipxe || shell"
+    ]
+    return Response(content="\n".join(script), media_type="text/plain")
+
+
 @router.get("/{mac}/boot.ipxe")
 async def get_boot_ipxe(mac: str, db: AsyncSession = Depends(get_db)):
     """
