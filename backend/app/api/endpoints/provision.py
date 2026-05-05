@@ -112,7 +112,12 @@ async def get_boot_ipxe(mac: str, db: AsyncSession = Depends(get_db)):
     """
     Returns a dynamic iPXE script for the box.
     """
-    result = await db.execute(select(Box).where(Box.mac_address == cast(mac, MACADDR)))
+    from sqlalchemy.orm import selectinload
+    result = await db.execute(
+        select(Box)
+        .options(selectinload(Box.os_image))
+        .where(Box.mac_address == cast(mac, MACADDR))
+    )
     box = result.scalars().first()
     
     if not box:
@@ -120,17 +125,18 @@ async def get_boot_ipxe(mac: str, db: AsyncSession = Depends(get_db)):
 
     if box.status == BoxStatus.INSTALLING:
         preseed_url = f"http://{settings.API_HOST}:{settings.API_PORT}/api/provision/{mac}/preseed.cfg"
-        image_dir = "debian-installer"
         
-        # If box has a specific OS image, use it
-        # We need to eagerly load os_image or use a separate query
-        # For now, let's keep it simple or assume default
+        # Determine image directory from os_image filename
+        image_dir = "debian-installer"
+        if box.os_image:
+            image_dir = box.os_image.filename.replace(".iso", "").replace(".ISO", "")
         
         kernel = f"tftp://${{next-server}}/images/{image_dir}/vmlinuz"
         initrd = f"tftp://${{next-server}}/images/{image_dir}/initrd.gz"
         
         script = f"""#!ipxe
 echo Starting Overwatch Network Installer for MAC {mac}
+echo Using image: {image_dir}
 kernel {kernel} auto=true priority=critical url={preseed_url} interface=auto
 initrd {initrd}
 boot
