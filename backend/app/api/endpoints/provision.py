@@ -152,11 +152,12 @@ async def get_boot_ipxe(mac: str, db: AsyncSession = Depends(get_db)):
 
         kernel = f"tftp://${{next-server}}/images/{image_dir}/{kernel_file}"
         initrd = f"tftp://${{next-server}}/images/{image_dir}/{initrd_file}"
+        iso_url = f"http://{settings.API_HOST}:{settings.API_PORT}/isos/{box.os_image.filename}"
         
         script = f"""#!ipxe
 echo Starting Overwatch Network Installer for MAC {mac}
 echo Using image: {image_dir} (Kernel: {kernel_file}, Initrd: {initrd_file})
-kernel {kernel} initrd={initrd_file} auto=true priority=critical url={preseed_url} interface=auto
+kernel {kernel} initrd={initrd_file} ip=dhcp url={iso_url} autoinstall ds=nocloud-net;s=http://{settings.API_HOST}:{settings.API_PORT}/api/provision/{mac}/ auto=true priority=critical url={preseed_url} interface=auto
 initrd {initrd}
 boot
 """

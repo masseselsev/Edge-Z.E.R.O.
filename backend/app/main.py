@@ -8,6 +8,12 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
+from fastapi.staticfiles import StaticFiles
+import os
+
+app.mount("/isos", StaticFiles(directory="/mnt/infra_config/isos"), name="isos")
+app.mount("/images", StaticFiles(directory="/mnt/infra_config/tftp/images"), name="images")
+
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(recovery.router, prefix="/api/recovery", tags=["recovery"])
 app.include_router(init_scripts.router, prefix="/api/init-scripts", tags=["init-scripts"])
