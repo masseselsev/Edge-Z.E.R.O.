@@ -78,6 +78,15 @@ configfile /grub.cfg-01-${mac_dash}
     async with aiofiles.open(root_grub_path, "w") as f:
         await f.write(main_grub_content)
 
+    # 5. Generate iPXE boot script (The most reliable way)
+    ipxe_path = os.path.join(TFTP_ROOT, "boot.ipxe")
+    ipxe_content = f"""#!ipxe
+# Try to fetch specific config from API by MAC
+chain http://{settings.API_HOST}:{settings.API_PORT}/api/provision/${{mac:hexhyp}}/boot.ipxe || shell
+"""
+    async with aiofiles.open(ipxe_path, "w") as f:
+        await f.write(ipxe_content)
+
 
 async def generate_box_pxe_config(box: Box):
     """

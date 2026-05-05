@@ -104,3 +104,37 @@ async def provision_callback(mac: str, db: AsyncSession = Depends(get_db)):
         await send_telegram_message(db, f"✅ <b>Box Provisioned Successfully</b>\n\nMAC: {mac}\nSN: {box.internal_sn}\nIP: {box.ip_address}")
         
     return {"status": "success"}
+
+from app.core.config import settings
+
+@router.get("/{mac}/boot.ipxe")
+async def get_boot_ipxe(mac: str, db: AsyncSession = Depends(get_db)):
+    """
+    Returns a dynamic iPXE script for the box.
+    """
+    result = await db.execute(select(Box).where(Box.mac_address == cast(mac, MACADDR)))
+    box = result.scalars().first()
+    
+    if not box:
+        return Response(content="#!ipxe\necho Box not found\nshell", media_type="text/plain")
+
+    if box.status == BoxStatus.INSTALLING:
+        preseed_url = f"http://{settings.API_HOST}:{settings.API_PORT}/api/provision/{mac}/preseed.cfg"
+        image_dir = "debian-installer"
+        
+        # If box has a specific OS image, use it
+        # We need to eagerly load os_image or use a separate query
+        # For now, let's keep it simple or assume default
+        
+        kernel = f"tftp://${{next-server}}/images/{image_dir}/vmlinuz"
+        initrd = f"tftp://${{next-server}}/images/{image_dir}/initrd.gz"
+        
+        script = f"""#!ipxe
+echo Starting Overwatch Network Installer for MAC {mac}
+kernel {kernel} auto=true priority=critical url={preseed_url} interface=auto
+initrd {initrd}
+boot
+"""
+        return Response(content=script, media_type="text/plain")
+    else:
+        return Response(content="#!ipxe\nexit", media_type="text/plain")
