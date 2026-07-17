@@ -19,9 +19,10 @@ interface HeaderProps {
   setActiveTab: (tab: string) => void;
   currentUser: any;
   onLogout: () => void;
+  onEditProfile: () => void;
 }
 
-export default function Header({ activeTab, setActiveTab, currentUser, onLogout }: HeaderProps) {
+export default function Header({ activeTab, setActiveTab, currentUser, onLogout, onEditProfile }: HeaderProps) {
   const { t, language } = useTranslation();
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const saved = localStorage.getItem('theme');
@@ -209,9 +210,18 @@ export default function Header({ activeTab, setActiveTab, currentUser, onLogout 
                       <button
                         onClick={() => {
                           setProfileDropdownOpen(false);
+                          onEditProfile();
+                        }}
+                        className="w-full text-left px-3 py-2 text-xs font-semibold rounded-md text-zinc-300 hover:text-zinc-50 hover:bg-zinc-800 transition-colors cursor-pointer"
+                      >
+                        Edit Profile
+                      </button>
+                      <button
+                        onClick={() => {
+                          setProfileDropdownOpen(false);
                           onLogout();
                         }}
-                        className="w-full text-left px-3 py-2 text-xs font-semibold rounded-md text-rose-450 hover:text-rose-400 hover:bg-rose-950/20 transition-colors cursor-pointer"
+                        className="w-full text-left px-3 py-2 text-xs font-semibold rounded-md text-rose-450 hover:text-rose-400 hover:bg-rose-950/20 transition-colors border-t border-zinc-850 mt-1 pt-2 cursor-pointer"
                       >
                         {t('logoutButton')}
                       </button>

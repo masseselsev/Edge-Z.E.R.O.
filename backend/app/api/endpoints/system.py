@@ -285,3 +285,27 @@ async def delete_user(
     await db.delete(user)
     await db.commit()
     return {"status": "success"}
+
+# Profile update schemas
+class UserProfileUpdateSchema(BaseModel):
+    password: Optional[str] = None
+    telegram_id: Optional[str] = None
+
+# Profile update endpoint
+@router.put("/users/profile", response_model=UserResponseSchema)
+async def update_profile(
+    payload: UserProfileUpdateSchema,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_user)
+):
+    if payload.telegram_id is not None:
+        current_user.telegram_id = payload.telegram_id
+    if payload.password is not None:
+        if len(payload.password) < 6:
+            raise HTTPException(status_code=400, detail="Password must be at least 6 characters long")
+        current_user.hashed_password = security.get_password_hash(payload.password)
+    
+    db.add(current_user)
+    await db.commit()
+    await db.refresh(current_user)
+    return current_user

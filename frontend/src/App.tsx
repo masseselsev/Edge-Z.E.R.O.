@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TranslationProvider } from './context/TranslationContext';
 import Layout from './components/Layout';
 import Login from './components/Login';
+import ProfileModal from './components/ProfileModal';
 import DashboardTab from './components/DashboardTab';
 import InventoryTab from './components/InventoryTab';
 import LibraryTab from './components/LibraryTab';
@@ -14,6 +15,7 @@ export function AppContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Validate active session on boot
   useEffect(() => {
@@ -98,14 +100,25 @@ export function AppContent() {
   };
 
   return (
-    <Layout 
-      activeTab={activeTab} 
-      setActiveTab={setActiveTab}
-      currentUser={currentUser}
-      onLogout={handleLogout}
-    >
-      {renderContent()}
-    </Layout>
+    <>
+      <Layout 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab}
+        currentUser={currentUser}
+        onLogout={handleLogout}
+        onEditProfile={() => setShowProfileModal(true)}
+      >
+        {renderContent()}
+      </Layout>
+
+      {showProfileModal && currentUser && (
+        <ProfileModal
+          currentUser={currentUser}
+          onClose={() => setShowProfileModal(false)}
+          onUpdateSuccess={(updated) => setCurrentUser(updated)}
+        />
+      )}
+    </>
   );
 }
 
