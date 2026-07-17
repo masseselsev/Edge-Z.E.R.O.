@@ -12,13 +12,13 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
-    port: 5173,
+    port: 5555,
     hmr: {
       host: 'localhost'
     },
     proxy: {
       '/api': {
-        target: 'http://overwatch-core:8000',
+        target: 'http://overwatch-core:7000',
         changeOrigin: true,
         secure: false
       }

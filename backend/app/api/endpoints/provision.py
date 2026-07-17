@@ -51,7 +51,7 @@ async def get_preseed(mac: str, request: Request, db: AsyncSession = Depends(get
         "request": request,
         "mac_address": mac,
         "api_host": settings.API_HOST if hasattr(settings, 'API_HOST') else "192.168.1.100", # Fallback or dynamic
-        "api_port": settings.API_PORT if hasattr(settings, 'API_PORT') else "8000",
+        "api_port": settings.API_PORT if hasattr(settings, 'API_PORT') else "7000",
         "ip_address": box.ip_address,
         "gateway": "192.168.1.1", # Hardcoded for now, should be in SystemSettings or Subnet logic
         "dns": "8.8.8.8",

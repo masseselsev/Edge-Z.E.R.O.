@@ -27,14 +27,14 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://overwatch:overwatch_password@overwatch-db:5432/overwatch
       API_HOST: 192.168.222.2
-      API_PORT: 8000
+      API_PORT: 7000
     volumes:
       - ./backend:/app
       - infra_config:/mnt/infra_config
     networks:
       - overwatch-net
     ports:
-      - "8000:8000"
+      - "7000:7000"
     command: [ "/app/entrypoint.sh" ]
 
   overwatch-infra:
@@ -70,7 +70,7 @@ services:
       - ./frontend:/app
     command: sh -c "npm install && npm run dev"
     ports:
-      - "5173:5173"
+      - "5555:5555"
     networks:
       - overwatch-net
 

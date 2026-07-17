@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7 # 7 days
     
     API_HOST: str = "192.168.222.2"
-    API_PORT: int = 8000
+    API_PORT: int = 7000
 
     model_config = SettingsConfigDict(
         env_file=".env",
