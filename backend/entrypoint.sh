@@ -10,5 +10,8 @@ done
 # Run migrations
 alembic upgrade head
 
+# Ensure admin user exists
+python create_admin.py
+
 # Start app
 uvicorn app.main:app --host 0.0.0.0 --port 7000 --reload
