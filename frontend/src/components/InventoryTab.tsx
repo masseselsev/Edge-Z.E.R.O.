@@ -119,7 +119,6 @@ export default function InventoryTab() {
         {/* Title */}
         <div className="flex-shrink-0">
           <h2 className="text-2xl font-bold tracking-tight text-zinc-100">{t('inventoryTitle')}</h2>
-          <p className="text-zinc-400 text-xs mt-1">{t('inventorySub')}</p>
         </div>
 
         {/* Overview Stats Header in the middle */}
