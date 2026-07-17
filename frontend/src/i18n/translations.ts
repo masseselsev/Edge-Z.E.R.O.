@@ -49,7 +49,15 @@ export const translations: Record<Language, Record<string, string>> = {
     // Common
     save: 'Save',
     cancel: 'Cancel',
-    back: 'Back'
+    back: 'Back',
+
+    // Authentication
+    loginTitle: 'Sign In',
+    loginUsername: 'Username',
+    loginPassword: 'Password',
+    loginSubmit: 'Sign In',
+    loginError: 'Invalid username or password',
+    logoutButton: 'Logout'
   },
   uk: {
     tabDashboard: 'Панель приладів',
@@ -99,7 +107,15 @@ export const translations: Record<Language, Record<string, string>> = {
     // Common
     save: 'Зберегти',
     cancel: 'Скасувати',
-    back: 'Назад'
+    back: 'Назад',
+
+    // Authentication
+    loginTitle: 'Вхід до системи',
+    loginUsername: 'Ім\'я користувача',
+    loginPassword: 'Пароль',
+    loginSubmit: 'Увійти',
+    loginError: 'Невірні ім\'я користувача або пароль',
+    logoutButton: 'Вийти'
   },
   ru: {
     tabDashboard: 'Панель',
@@ -143,12 +159,20 @@ export const translations: Record<Language, Record<string, string>> = {
     
     // Log options
     taskLogs: 'Журналы задач',
-    debugLogs: 'Системные журналы отладки',
+    debugLogs: 'Системные журнали отладки',
     auditLogs: 'Журналы аудита',
     
     // Common
     save: 'Сохранить',
     cancel: 'Отмена',
-    back: 'Назад'
+    back: 'Назад',
+
+    // Authentication
+    loginTitle: 'Вход в систему',
+    loginUsername: 'Имя пользователя',
+    loginPassword: 'Пароль',
+    loginSubmit: 'Войти',
+    loginError: 'Неверное имя пользователя или пароль',
+    logoutButton: 'Выйти'
   }
 };

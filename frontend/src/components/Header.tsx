@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../context/TranslationContext';
 import LanguageSelector from './LanguageSelector';
 import { Sun, Moon, User, ArrowDown, ArrowUp, LayoutDashboard, Server, Library, ScrollText, Terminal, Settings, Eye } from 'lucide-react';
@@ -17,9 +17,11 @@ interface BandwidthInfo {
 interface HeaderProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  currentUser: any;
+  onLogout: () => void;
 }
 
-export default function Header({ activeTab, setActiveTab }: HeaderProps) {
+export default function Header({ activeTab, setActiveTab, currentUser, onLogout }: HeaderProps) {
   const { t, language } = useTranslation();
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const saved = localStorage.getItem('theme');
@@ -34,6 +36,9 @@ export default function Header({ activeTab, setActiveTab }: HeaderProps) {
     rx_percent: 0,
     tx_percent: 0
   });
+
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const profileDropdownRef = useRef<HTMLDivElement>(null);
 
   // Toggle Theme
   const toggleTheme = () => {
@@ -56,11 +61,25 @@ export default function Header({ activeTab, setActiveTab }: HeaderProps) {
     }
   }, [theme]);
 
+  // Click outside to close dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+        setProfileDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Poll system diagnostics
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        const res = await fetch('/api/system/bandwidth');
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/system/bandwidth', {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
         if (res.ok) {
           const data = await res.json();
           setMetrics(data);
@@ -171,13 +190,35 @@ export default function Header({ activeTab, setActiveTab }: HeaderProps) {
           {/* Right Controllers Dropdown & Switches */}
           <div className="flex-1 flex flex-wrap items-center justify-center md:justify-end gap-3">
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 font-bold cursor-pointer transition-all outline-none"
-              >
-                <User size={13} className="text-zinc-400" />
-                <span>Administrator</span>
-              </button>
+              
+              {/* User Dropdown Selector */}
+              {currentUser && (
+                <div className="relative mr-1" ref={profileDropdownRef}>
+                  <button
+                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 font-bold transition-all duration-200 cursor-pointer outline-none"
+                  >
+                    <User size={13} className="text-zinc-400" />
+                    <span className="capitalize">{currentUser.username}</span>
+                    <svg className={`w-3 h-3 text-zinc-500 transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {profileDropdownOpen && (
+                    <div className="absolute right-0 mt-1.5 w-44 rounded-lg bg-zinc-900 border border-zinc-800 shadow-2xl p-1 z-50 origin-top-right animate-dropdown-in">
+                      <button
+                        onClick={() => {
+                          setProfileDropdownOpen(false);
+                          onLogout();
+                        }}
+                        className="w-full text-left px-3 py-2 text-xs font-semibold rounded-md text-rose-450 hover:text-rose-400 hover:bg-rose-950/20 transition-colors cursor-pointer"
+                      >
+                        {t('logoutButton')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
               
               <LanguageSelector />
               
