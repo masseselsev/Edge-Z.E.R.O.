@@ -114,55 +114,58 @@ export default function InventoryTab() {
 
   return (
     <div className="space-y-6">
-      {/* Title & Actions Row */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
+      {/* Title & Actions Row with integrated Stats Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        {/* Title */}
+        <div className="flex-shrink-0">
           <h2 className="text-2xl font-bold tracking-tight text-zinc-100">{t('inventoryTitle')}</h2>
           <p className="text-zinc-400 text-xs mt-1">{t('inventorySub')}</p>
         </div>
-        <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
+
+        {/* Overview Stats Header in the middle */}
+        <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3 lg:mx-8 max-w-xl w-full">
+          {[
+            {
+              label: t('totalDevices'),
+              value: stats.total_boxes,
+              icon: <Server className="text-indigo-400" size={14} />,
+              bg: 'bg-zinc-900 border-zinc-800'
+            },
+            {
+              label: t('pendingProvision'),
+              value: stats.pending_provision,
+              icon: <PlayCircle className="text-amber-400" size={14} />,
+              bg: 'bg-zinc-900 border-zinc-800'
+            },
+            {
+              label: t('activeAlerts'),
+              value: stats.active_alerts,
+              icon: <AlertTriangle className="text-rose-400" size={14} />,
+              bg: stats.active_alerts > 0 ? 'bg-rose-950/10 border-rose-900/30' : 'bg-zinc-900 border-zinc-800'
+            }
+          ].map((item, idx) => (
+            <div key={idx} className={`p-2.5 rounded-xl border flex items-center justify-between shadow-sm transition-all hover:scale-[1.01] ${item.bg}`}>
+              <div>
+                <p className="text-zinc-400 text-[8px] font-bold uppercase tracking-wider">{item.label}</p>
+                <p className="text-base font-black mt-0.5 text-zinc-100">{item.value}</p>
+              </div>
+              <div className="p-1.5 bg-zinc-950/60 rounded-lg border border-zinc-800/40">
+                {item.icon}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Actions Button */}
+        <div className="flex-shrink-0 flex items-center gap-2 self-stretch lg:self-auto justify-end">
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold text-xs transition-colors self-stretch sm:self-auto justify-center cursor-pointer shadow-md"
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold text-xs transition-colors self-stretch lg:self-auto justify-center cursor-pointer shadow-md"
           >
             <Plus size={16} />
             <span>{t('addBox')}</span>
           </button>
         </div>
-      </div>
-
-      {/* Overview Stats Header */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[
-          {
-            label: t('totalDevices'),
-            value: stats.total_boxes,
-            icon: <Server className="text-indigo-400" size={16} />,
-            bg: 'bg-zinc-900 border-zinc-800'
-          },
-          {
-            label: t('pendingProvision'),
-            value: stats.pending_provision,
-            icon: <PlayCircle className="text-amber-400" size={16} />,
-            bg: 'bg-zinc-900 border-zinc-800'
-          },
-          {
-            label: t('activeAlerts'),
-            value: stats.active_alerts,
-            icon: <AlertTriangle className="text-rose-400" size={16} />,
-            bg: stats.active_alerts > 0 ? 'bg-rose-950/10 border-rose-900/30' : 'bg-zinc-900 border-zinc-800'
-          }
-        ].map((item, idx) => (
-          <div key={idx} className={`p-3.5 rounded-xl border flex items-center justify-between shadow-sm transition-all hover:scale-[1.01] ${item.bg}`}>
-            <div>
-              <p className="text-zinc-400 text-[9px] font-bold uppercase tracking-wider">{item.label}</p>
-              <p className="text-xl font-black mt-1 text-zinc-100">{item.value}</p>
-            </div>
-            <div className="p-2 bg-zinc-950/60 rounded-xl border border-zinc-800/40">
-              {item.icon}
-            </div>
-          </div>
-        ))}
       </div>
 
       {/* Filter & Search Toolbar */}
