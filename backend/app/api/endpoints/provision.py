@@ -105,20 +105,21 @@ async def sync_pxe_config(db: AsyncSession = Depends(get_db)):
 
 from sqlalchemy import select, cast
 from sqlalchemy.dialects.postgresql import MACADDR
+from sqlalchemy.orm import joinedload
 
-# ...
+async def get_system_setting(db: AsyncSession, key: str, default: str) -> str:
+    res = await db.execute(select(SystemSettings).where(SystemSettings.key == key))
+    obj = res.scalars().first()
+    return obj.value if obj and obj.value else default
 
 @router.get("/{mac}/preseed.cfg")
 async def get_preseed(mac: str, request: Request, db: AsyncSession = Depends(get_db)):
-    # Standardize MAC format if needed. Assuming formatted as in DB or handled.
-    # The prompt generator logic uses colon-separated? PXE asks for dash-separated usually, 
-    # but the URL in PXE config uses `{mac}/preseed.cfg`.
-    # Let's handle generic mac matching.
-    
     # Query Box (cast input string to MACADDR)
-    # Note: If mac string is invalid, this might raise DB error. 
-    # Ideally validate before query. But for now, we rely on basic catch or 500.
-    result = await db.execute(select(Box).where(Box.mac_address == cast(mac, MACADDR)))
+    result = await db.execute(
+        select(Box)
+        .options(joinedload(Box.location))
+        .where(Box.mac_address == cast(mac, MACADDR))
+    )
     box = result.scalars().first()
     
     if not box:
@@ -128,16 +129,34 @@ async def get_preseed(mac: str, request: Request, db: AsyncSession = Depends(get
     result_vpn = await db.execute(select(VpnCredential).where(VpnCredential.box_id == box.id))
     vpn = result_vpn.scalars().first()
 
+    # Load defaults from SystemSettings table
+    default_ssh_key = await get_system_setting(db, "DEFAULT_SSH_PUBLIC_KEY", "ssh-rsa AAAAB3N...")
+    default_gateway = await get_system_setting(db, "DEFAULT_GATEWAY", "192.168.1.1")
+    default_dns = await get_system_setting(db, "DEFAULT_DNS", "8.8.8.8")
+    default_ntp = await get_system_setting(db, "DEFAULT_NTP", "pool.ntp.org")
+    default_tz = await get_system_setting(db, "DEFAULT_TIMEZONE", "UTC")
+    default_locale = await get_system_setting(db, "DEFAULT_LOCALE", "en_US.UTF-8")
+    default_keyboard = await get_system_setting(db, "DEFAULT_KEYBOARD", "us")
+    default_mirror = await get_system_setting(db, "DEFAULT_PACKAGE_MIRROR", "deb.debian.org")
+
+    loc = box.location
+
     # Define variables for template
     context = {
         "request": request,
         "mac_address": mac,
-        "api_host": settings.API_HOST if hasattr(settings, 'API_HOST') else "192.168.1.100", # Fallback or dynamic
-        "api_port": settings.API_PORT if hasattr(settings, 'API_PORT') else "7000",
+        "api_host": settings.API_HOST,
+        "api_port": settings.API_PORT,
         "ip_address": box.ip_address,
-        "gateway": "192.168.1.1", # Hardcoded for now, should be in SystemSettings or Subnet logic
-        "dns": "8.8.8.8",
-        "ssh_public_key": "ssh-rsa AAAA...", # Should come from SystemSettings
+        "gateway": loc.gateway if loc and loc.gateway else default_gateway,
+        "netmask": loc.netmask if loc and loc.netmask else "255.255.255.0",
+        "dns": loc.dns_server if loc and loc.dns_server else default_dns,
+        "ntp_server": loc.ntp_server if loc and loc.ntp_server else default_ntp,
+        "timezone": loc.timezone if loc and loc.timezone else default_tz,
+        "locale": loc.locale if loc and loc.locale else default_locale,
+        "keyboard": loc.keyboard if loc and loc.keyboard else default_keyboard,
+        "mirror_host": loc.package_mirror if loc and loc.package_mirror else default_mirror,
+        "ssh_public_key": loc.ssh_public_key if loc and loc.ssh_public_key else default_ssh_key,
         "ca_cert": vpn.ca_cert if vpn else "",
         "client_cert": vpn.client_cert if vpn else "",
         "client_key": vpn.client_key if vpn else ""
@@ -158,12 +177,28 @@ async def get_preseed(mac: str, request: Request, db: AsyncSession = Depends(get
 @router.get("/{mac}/user-data")
 async def get_user_data(mac: str, request: Request, db: AsyncSession = Depends(get_db)):
     # Same logic as preseed but for Ubuntu
-    result = await db.execute(select(Box).where(Box.mac_address == cast(mac, MACADDR)))
+    result = await db.execute(
+        select(Box)
+        .options(joinedload(Box.location))
+        .where(Box.mac_address == cast(mac, MACADDR))
+    )
     box = result.scalars().first()
     if not box:
         raise HTTPException(status_code=404, detail="Box not found")
     result_vpn = await db.execute(select(VpnCredential).where(VpnCredential.box_id == box.id))
     vpn = result_vpn.scalars().first()
+
+    # Load defaults from SystemSettings table
+    default_ssh_key = await get_system_setting(db, "DEFAULT_SSH_PUBLIC_KEY", "ssh-rsa AAAAB3N...")
+    default_gateway = await get_system_setting(db, "DEFAULT_GATEWAY", "192.168.1.1")
+    default_dns = await get_system_setting(db, "DEFAULT_DNS", "8.8.8.8")
+    default_ntp = await get_system_setting(db, "DEFAULT_NTP", "pool.ntp.org")
+    default_tz = await get_system_setting(db, "DEFAULT_TIMEZONE", "UTC")
+    default_locale = await get_system_setting(db, "DEFAULT_LOCALE", "en_US.UTF-8")
+    default_keyboard = await get_system_setting(db, "DEFAULT_KEYBOARD", "us")
+    default_mirror = await get_system_setting(db, "DEFAULT_PACKAGE_MIRROR", "deb.debian.org")
+
+    loc = box.location
 
     context = {
         "request": request,
@@ -171,9 +206,15 @@ async def get_user_data(mac: str, request: Request, db: AsyncSession = Depends(g
         "api_host": settings.API_HOST,
         "api_port": settings.API_PORT,
         "ip_address": box.ip_address,
-        "gateway": "192.168.188.1", 
-        "dns": "8.8.8.8",
-        "ssh_public_key": "ssh-rsa AAAA...", 
+        "gateway": loc.gateway if loc and loc.gateway else default_gateway,
+        "netmask": loc.netmask if loc and loc.netmask else "255.255.255.0",
+        "dns": loc.dns_server if loc and loc.dns_server else default_dns,
+        "ntp_server": loc.ntp_server if loc and loc.ntp_server else default_ntp,
+        "timezone": loc.timezone if loc and loc.timezone else default_tz,
+        "locale": loc.locale if loc and loc.locale else default_locale,
+        "keyboard": loc.keyboard if loc and loc.keyboard else default_keyboard,
+        "mirror_host": loc.package_mirror if loc and loc.package_mirror else default_mirror,
+        "ssh_public_key": loc.ssh_public_key if loc and loc.ssh_public_key else default_ssh_key,
         "ca_cert": vpn.ca_cert if vpn else "",
         "client_cert": vpn.client_cert if vpn else "",
         "client_key": vpn.client_key if vpn else ""
@@ -188,6 +229,31 @@ async def get_user_data(mac: str, request: Request, db: AsyncSession = Depends(g
 @router.get("/{mac}/meta-data")
 async def get_meta_data(mac: str):
     return Response(content="instance-id: overwatch-box\n", media_type="text/plain")
+
+class HardwareReport(BaseModel):
+    cpu: Optional[str] = None
+    memory: Optional[str] = None
+    disk: Optional[str] = None
+    interfaces: Optional[str] = None
+    usb_devices: Optional[str] = None
+    pci_devices: Optional[str] = None
+    serial_ports: Optional[str] = None
+
+@router.post("/{mac}/hardware-inventory")
+async def report_hardware_inventory(
+    mac: str,
+    payload: HardwareReport,
+    db: AsyncSession = Depends(get_db)
+):
+    """Stores the hardware diagnostic report sent by the box custom script."""
+    result = await db.execute(select(Box).where(Box.mac_address == cast(mac, MACADDR)))
+    box = result.scalars().first()
+    if not box:
+        raise HTTPException(status_code=404, detail="Box not found")
+
+    box.hardware_inventory = payload.model_dump(exclude_none=True)
+    await db.commit()
+    return {"status": "ok"}
 
 from app.models.init_script import InitScript
 from app.services.telegram import send_telegram_message
@@ -206,9 +272,50 @@ async def get_init_script(mac: str, db: AsyncSession = Depends(get_db)):
                 script_content += f"\n# --- {s.filename} ---\n"
                 script_content += f.read()
                 script_content += "\n"
+
+    # Append dynamic hardware auto-inspector reporting script
+    api_host = settings.API_HOST
+    api_port = settings.API_PORT
+    script_content += f"""
+# --- Auto-generated Hardware Inventory Report ---
+echo "[Info] Gathering hardware diagnostics..."
+CPU=\$(lscpu | grep 'Model name' | cut -d: -f2 | xargs || true)
+MEM=\$(free -h | grep Mem | awk '{{print \$2}}' || true)
+DISK=\$(lsblk -d -o NAME,SIZE,MODEL | grep -v 'NAME' | xargs || true)
+NET_IF=\$(ip -br link show | awk '{{print \$1 " (" \$2 ")"}}' | paste -sd ", " - || true)
+USB=\$(lsusb | cut -d' ' -f7- | paste -sd ", " - || true)
+PCI=\$(lspci | cut -d' ' -f2- | paste -sd "; " - || true)
+SERIAL=\$(ls /dev/ttyS* /dev/ttyUSB* /dev/ttyACM* 2>/dev/null | paste -sd ", " - || true)
+
+CPU_ESC=\$(echo "\$CPU" | sed 's/\\\\/\\\\\\\\/g' | sed 's/"/\\\\"/g')
+MEM_ESC=\$(echo "\$MEM" | sed 's/\\\\/\\\\\\\\/g' | sed 's/"/\\\\"/g')
+DISK_ESC=\$(echo "\$DISK" | sed 's/\\\\/\\\\\\\\/g' | sed 's/"/\\\\"/g')
+NET_IF_ESC=\$(echo "\$NET_IF" | sed 's/\\\\/\\\\\\\\/g' | sed 's/"/\\\\"/g')
+USB_ESC=\$(echo "\$USB" | sed 's/\\\\/\\\\\\\\/g' | sed 's/"/\\\\"/g')
+PCI_ESC=\$(echo "\$PCI" | sed 's/\\\\/\\\\\\\\/g' | sed 's/"/\\\\"/g')
+SERIAL_ESC=\$(echo "\$SERIAL" | sed 's/\\\\/\\\\\\\\/g' | sed 's/"/\\\\"/g')
+
+JSON_PAYLOAD=\$(cat <<EOF
+{{
+  "cpu": "\${{CPU_ESC}}",
+  "memory": "\${{MEM_ESC}}",
+  "disk": "\${{DISK_ESC}}",
+  "interfaces": "\${{NET_IF_ESC}}",
+  "usb_devices": "\${{USB_ESC}}",
+  "pci_devices": "\${{PCI_ESC}}",
+  "serial_ports": "\${{SERIAL_ESC}}"
+}}
+EOF
+)
+
+curl -sf -X POST -H "Content-Type: application/json" -d "\$JSON_PAYLOAD" http://{api_host}:{api_port}/api/provision/{mac}/hardware-inventory || true
+echo "[Success] Hardware diagnostic report sent to orchestrator."
+"""
     return Response(content=script_content, media_type="text/x-shellscript")
 
 from app.models.box import BoxStatus
+from app.models.user import User
+
 @router.get("/{mac}/callback")
 async def provision_callback(mac: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Box).where(Box.mac_address == cast(mac, MACADDR)))
@@ -218,7 +325,18 @@ async def provision_callback(mac: str, db: AsyncSession = Depends(get_db)):
         box.status = BoxStatus.ACTIVE
         box.installation_progress = 100
         await db.commit()
-        await send_telegram_message(db, f"✅ <b>Box Provisioned Successfully</b>\n\nMAC: {mac}\nSN: {box.internal_sn}\nIP: {box.ip_address}")
+
+        message = f"✅ <b>Box Provisioned Successfully</b>\n\nMAC: {mac}\nSN: {box.internal_sn}\nIP: {box.ip_address}"
+
+        # 1. Global notification
+        await send_telegram_message(db, message)
+
+        # 2. Per-user Telegram alerts for users with registered telegram IDs
+        user_res = await db.execute(select(User).where(User.telegram_id.isnot(None)))
+        users_with_tg = user_res.scalars().all()
+        for u in users_with_tg:
+            if u.telegram_id:
+                await send_telegram_message(db, message, chat_id=u.telegram_id)
         
     return {"status": "success"}
 
