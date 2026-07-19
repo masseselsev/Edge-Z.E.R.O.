@@ -7,11 +7,93 @@ from fastapi.responses import Response
 from app.db.session import get_db
 from app.models.box import Box
 from app.models.vpn_credential import VpnCredential
+from app.models.provisioning_log import ProvisioningLog
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 from app.services.pxe_gen import generate_pxe_config
+from pydantic import BaseModel
+from typing import Optional
+
+# Subiquity phase-to-progress mapping (applied on "finish" events only)
+SUBIQUITY_PHASE_PROGRESS: dict[str, int] = {
+    "apply_autoinstall_config": 5,
+    "install": 10,
+    "install/partitioning": 20,
+    "install/partitioning/gpt": 22,
+    "install/filesystem_setup": 30,
+    "install/mount": 35,
+    "install/extract": 50,
+    "install/curthooks": 60,
+    "install/postinstall": 75,
+    "install/finish": 90,
+    "finish": 95,
+}
+
+class ReportPayload(BaseModel):
+    # Our own curl format fields
+    message: Optional[str] = None
+    progress: Optional[int] = None
+    # Ubuntu Subiquity reporting format fields
+    event_type: Optional[str] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+    result: Optional[str] = None
+
+    model_config = {"extra": "allow"}
+
+@router.post("/{mac}/report")
+async def provision_report(
+    mac: str,
+    payload: ReportPayload,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Receives installation progress from the box installer.
+    Accepts both our curl format {message, progress} and Ubuntu Subiquity
+    HTTP reporting format {event_type, name, description, result}.
+    """
+    from sqlalchemy import cast as sa_cast
+    result = await db.execute(
+        select(Box).where(Box.mac_address == sa_cast(mac, MACADDR))
+    )
+    box = result.scalars().first()
+    if not box:
+        raise HTTPException(status_code=404, detail="Box not found")
+
+    # Resolve message and progress from whichever format was sent
+    if payload.message:
+        # Our own curl format
+        message = payload.message
+        progress = payload.progress
+    elif payload.event_type:
+        # Ubuntu Subiquity format
+        phase = payload.name or ""
+        event = payload.event_type or ""
+        desc = payload.description or ""
+        result_str = payload.result or ""
+        message = f"[Subiquity] {event.upper()} {phase}"
+        if desc:
+            message += f": {desc}"
+        if result_str:
+            message += f" [{result_str}]"
+        # Only update progress on finish events
+        progress = SUBIQUITY_PHASE_PROGRESS.get(phase) if event == "finish" else None
+    else:
+        message = str(payload.model_dump(exclude_none=True))
+        progress = None
+
+    # Persist log line
+    log_entry = ProvisioningLog(box_id=box.id, message=message)
+    db.add(log_entry)
+
+    # Update progress if supplied
+    if progress is not None:
+        box.installation_progress = max(0, min(100, progress))
+
+    await db.commit()
+    return {"status": "ok"}
 
 @router.post("/sync")
 async def sync_pxe_config(db: AsyncSession = Depends(get_db)):

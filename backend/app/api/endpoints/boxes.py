@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, cast, delete, update
+from sqlalchemy import select, cast, delete, update, asc
 from sqlalchemy.dialects.postgresql import MACADDR
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 import csv
 import io
@@ -429,3 +429,27 @@ async def batch_provision(box_ids: List[UUID] = Body(...), db: AsyncSession = De
     await generate_pxe_config(db)
     
     return {"status": "success", "count": len(box_ids)}
+
+
+from app.models.provisioning_log import ProvisioningLog
+
+@router.get("/{box_id}/provisioning-logs")
+async def get_provisioning_logs(
+    box_id: UUID,
+    db: AsyncSession = Depends(get_db)
+):
+    """Returns all provisioning log entries for a box, ordered by time."""
+    result = await db.execute(
+        select(ProvisioningLog)
+        .where(ProvisioningLog.box_id == box_id)
+        .order_by(asc(ProvisioningLog.created_at))
+    )
+    logs = result.scalars().all()
+    return [
+        {
+            "id": str(log.id),
+            "message": log.message,
+            "created_at": log.created_at.isoformat()
+        }
+        for log in logs
+    ]
