@@ -23,6 +23,7 @@ class Box(Base):
     location_id = Column(UUID(as_uuid=True), ForeignKey("locations.id", ondelete="SET NULL"), nullable=True)
     os_image_id = Column(UUID(as_uuid=True), ForeignKey("os_images.id", ondelete="SET NULL"), nullable=True)
     notes = Column(Text, nullable=True)
+    installation_progress = Column(Integer, default=0, nullable=False)
 
     location = relationship("Location", back_populates="boxes")
     os_image = relationship("app.models.os_image.OsImage")

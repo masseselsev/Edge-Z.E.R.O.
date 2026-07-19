@@ -12,4 +12,5 @@ from app.models.location import Location
 from app.models.component_definition import ComponentDefinition
 from app.models.system_log import SystemLog
 from app.models.audit_log import AuditLog
+from app.models.provisioning_log import ProvisioningLog  # noqa: F401
 
