@@ -168,7 +168,7 @@ export default function LogsTab() {
                     <td className="px-6 py-4 font-mono text-zinc-500">{new Date(log.created_at).toLocaleString()}</td>
                     <td className="px-6 py-4 font-bold text-zinc-200">{log.username}</td>
                     <td className="px-6 py-4">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-status-staging-bg text-status-staging-text border border-status-staging-border">
+                      <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-zinc-800 text-zinc-300 whitespace-nowrap">
                         {log.action}
                       </span>
                     </td>
