@@ -255,7 +255,7 @@ export default function Header({ activeTab, setActiveTab, currentUser, onLogout,
         <div className="border-t border-zinc-800/60 pt-2 flex justify-center w-full">
           <nav className="w-full flex flex-wrap items-center justify-center gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800/60">
             {navItems.map((item) => {
-              const isSpecial = item.id === 'edgebro';
+              const isSpecial = item.id === 'edgebro' || item.id === 'vsm2flasher';
               let btnClass = '';
               let iconClass = '';
               
