@@ -27,3 +27,6 @@ postgres_data/
 # OS Generated
 dnsmasq.ethers
 pxelinux.cfg/
+
+# VSM2 Repo Cache
+backend/vsm2_repo_cache/

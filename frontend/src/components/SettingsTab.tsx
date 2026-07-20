@@ -313,12 +313,12 @@ export default function SettingsTab() {
                 )}
               </div>
 
-              {/* Edge B.R.O. Integration credentials card */}
+              {/* Edge-B.R.O. Integration credentials card */}
               <div className="pt-3 border-t border-zinc-850 space-y-4">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block">Edge B.R.O. Integration</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block">Edge-B.R.O. Integration</span>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-zinc-500 mb-1">Edge B.R.O. Server URL</label>
+                    <label className="block text-[10px] uppercase font-bold text-zinc-500 mb-1">Edge-B.R.O. Server URL</label>
                     <input
                       type="text"
                       value={getSetting('EDGE_BRO_URL', 'http://localhost:8000')}

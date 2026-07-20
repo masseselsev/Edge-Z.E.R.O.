@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from app.core.config import settings
 
-from app.api.endpoints import provision, boxes, library, device_groups, system, locations, auth, recovery, init_scripts, ssh_proxy
+from app.api.endpoints import provision, boxes, library, device_groups, system, locations, auth, recovery, init_scripts, ssh_proxy, vsm2_flasher
 from app.db.session import setup_db_logging
 
 setup_db_logging()
@@ -27,6 +27,7 @@ app.include_router(device_groups.router, prefix="/api/device-groups", tags=["dev
 app.include_router(locations.router, prefix="/api/locations", tags=["locations"])
 app.include_router(system.router, prefix="/api/system", tags=["system"])
 app.include_router(ssh_proxy.router, prefix="/api/ssh", tags=["ssh"])
+app.include_router(vsm2_flasher.router, prefix="/api/vsm2-flasher", tags=["vsm2-flasher"])
 
 @app.get("/")
 def root():
@@ -66,6 +67,9 @@ async def monitor_heartbeats():
 @app.on_event("startup")
 async def startup_event():
     import asyncio
+    import threading
     from app.services.syslog_listener import start_syslog_listener
+    from app.services.vsm2_repo import sync_repo
     asyncio.create_task(monitor_heartbeats())
     asyncio.create_task(start_syslog_listener())
+    threading.Thread(target=sync_repo, daemon=True).start()

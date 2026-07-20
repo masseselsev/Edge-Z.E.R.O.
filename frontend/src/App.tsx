@@ -10,6 +10,7 @@ import LogsTab from './components/LogsTab';
 import SettingsTab from './components/SettingsTab';
 import ProfilesTab from './components/ProfilesTab';
 import EdgeBroTab from './components/EdgeBroTab';
+import Vsm2FlasherTab from './components/Vsm2FlasherTab';
 import { Loader2 } from 'lucide-react';
 
 export function AppContent() {
@@ -103,6 +104,8 @@ export function AppContent() {
         return <LogsTab />;
       case 'settings':
         return <SettingsTab />;
+      case 'vsm2flasher':
+        return <Vsm2FlasherTab />;
       case 'edgebro':
         return <EdgeBroTab />;
       default:

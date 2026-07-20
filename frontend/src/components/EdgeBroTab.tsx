@@ -98,9 +98,9 @@ export default function EdgeBroTab() {
             <svg className="w-[18px] h-[18px] text-indigo-400 filter drop-shadow-[0_0_4px_rgba(99,102,241,0.6)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
-            <span>Edge B.R.O. Backup Integration</span>
+            <span>Edge-B.R.O. Backup Integration</span>
           </h2>
-          <p className="text-xs text-zinc-450 mt-2">Manage backup replication and node enrollment in Edge B.R.O. backup cluster.</p>
+          <p className="text-xs text-zinc-450 mt-2">Manage backup replication and node enrollment in Edge-B.R.O. backup cluster.</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -128,9 +128,9 @@ export default function EdgeBroTab() {
         <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-start gap-3">
           <ShieldAlert size={20} className="text-rose-400 shrink-0 mt-0.5" />
           <div>
-            <span className="text-xs font-bold text-rose-300 block">Connection to Edge B.R.O. Failed</span>
+            <span className="text-xs font-bold text-rose-300 block">Connection to Edge-B.R.O. Failed</span>
             <p className="text-[11px] text-rose-400/80 leading-relaxed mt-1">
-              Could not connect to Edge B.R.O. API at <code className="bg-rose-950/40 px-1 py-0.5 rounded font-mono">{edgeBroUrl}</code>. Check your Settings in System Preferences.
+              Could not connect to Edge-B.R.O. API at <code className="bg-rose-950/40 px-1 py-0.5 rounded font-mono">{edgeBroUrl}</code>. Check your Settings in System Preferences.
             </p>
             <p className="text-[10px] text-rose-500 font-mono mt-1.5">{errorMsg}</p>
           </div>

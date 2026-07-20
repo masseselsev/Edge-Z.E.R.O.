@@ -2,11 +2,11 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y \
     postgresql-client \
     netcat-traditional \
     p7zip-full \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Install python dependencies
