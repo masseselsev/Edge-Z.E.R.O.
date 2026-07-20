@@ -57,7 +57,7 @@ async def repo_status(current_user: User = Depends(deps.get_current_user)):
 
 @router.post("/repo-sync")
 async def trigger_repo_sync(current_user: User = Depends(deps.get_current_user)):
-    success = sync_repo()
+    success = await asyncio.to_thread(sync_repo)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to sync repository cache")
     return {"status": "synced"}
@@ -65,9 +65,44 @@ async def trigger_repo_sync(current_user: User = Depends(deps.get_current_user))
 @router.get("/files/{filename:path}")
 async def get_repo_file(filename: str):
     safe_path = os.path.normpath(os.path.join(REPO_CACHE_DIR, filename))
-    if not safe_path.startswith(REPO_CACHE_DIR) or not os.path.exists(safe_path) or os.path.isdir(safe_path):
+    if not (safe_path == REPO_CACHE_DIR or safe_path.startswith(REPO_CACHE_DIR + os.sep)) or not os.path.exists(safe_path) or os.path.isdir(safe_path):
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(safe_path)
+
+@router.get("/api/repo/list")
+async def list_repo_files(request: Request, path: str = ""):
+    safe_path = os.path.normpath(os.path.join(REPO_CACHE_DIR, path))
+    if not (safe_path == REPO_CACHE_DIR or safe_path.startswith(REPO_CACHE_DIR + os.sep)):
+        raise HTTPException(status_code=403, detail="Access denied")
+        
+    if not os.path.exists(safe_path) or not os.path.isdir(safe_path):
+        raise HTTPException(status_code=404, detail="Directory not found")
+        
+    files = []
+    base_url = str(request.base_url).rstrip('/')
+    flasher_base_url = f"{base_url}/api/vsm2-flasher"
+    
+    for item in os.listdir(safe_path):
+        item_path = os.path.join(safe_path, item)
+        item_rel = os.path.join(path, item)
+        
+        if item.startswith('.'):
+            continue
+            
+        if os.path.isfile(item_path):
+            files.append({
+                "name": item,
+                "type": "file",
+                "download_url": f"{flasher_base_url}/files/{item_rel}"
+            })
+        elif os.path.isdir(item_path):
+            files.append({
+                "name": item,
+                "type": "dir",
+                "download_url": None
+            })
+            
+    return files
 
 @router.post("/flash")
 async def flash_devices(payload: FlashRequest, current_user: User = Depends(deps.get_current_user)):
@@ -89,7 +124,7 @@ async def flash_devices(payload: FlashRequest, current_user: User = Depends(deps
     tg_chat_id = await get_system_setting("TELEGRAM_CHAT_ID")
     timezone = await get_system_setting("DEFAULT_TIMEZONE", "UTC")
     
-    sync_repo() # Trigger repo check
+    await asyncio.to_thread(sync_repo) # Trigger repo check
     
     for ip in available_ips:
         worker = FlashWorker(
@@ -134,13 +169,13 @@ async def get_console_ports(current_user: User = Depends(deps.get_current_user))
 
 @router.get("/console/commands")
 async def get_console_commands(current_user: User = Depends(deps.get_current_user)):
-    cmd_path = os.path.join(REPO_CACHE_DIR, 'dist', 'commands.py')
+    cmd_path = os.path.join(REPO_CACHE_DIR, 'controlboard', 'dist', 'commands.py')
     if not os.path.exists(cmd_path):
         return []
     try:
         spec = importlib.util.spec_from_file_location("commands", cmd_path)
         commands = importlib.util.module_from_spec(spec)
-        sys.path.append(os.path.join(REPO_CACHE_DIR, 'dist'))
+        sys.path.append(os.path.join(REPO_CACHE_DIR, 'controlboard', 'dist'))
         spec.loader.exec_module(commands)
         cmds = []
         def add_cmds(array, type_name):
@@ -172,35 +207,49 @@ async def console_connect(payload: ConsoleConnectRequest, current_user: User = D
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
-        ssh.connect(payload.ip, port=payload.ssh_port, username=payload.username, password=payload.password, timeout=15)
-        sftp = ssh.open_sftp()
-        ssh.exec_command("mkdir -p ~/controlboard")
+        await asyncio.to_thread(ssh.connect, payload.ip, port=payload.ssh_port, username=payload.username, password=payload.password, timeout=15)
+        sftp = await asyncio.to_thread(ssh.open_sftp)
+        
+        stdin, stdout, stderr = ssh.exec_command("mkdir -p ~/controlboard")
+        await asyncio.to_thread(stdout.channel.recv_exit_status)
+        
         for f in ['app.py', 'dist/commands.py', 'dist/controlboard.py']:
-            src = os.path.join(REPO_CACHE_DIR, f)
+            src = os.path.join(REPO_CACHE_DIR, 'controlboard', f)
             dest = f"controlboard/{f}"
             if os.path.exists(src):
                 if '/' in f:
-                    ssh.exec_command(f"mkdir -p ~/controlboard/{f.split('/')[0]}")
-                sftp.put(src, dest)
-        sftp.close()
+                    subfolder = f.split('/')[0]
+                    stdin_sub, stdout_sub, stderr_sub = ssh.exec_command(f"mkdir -p ~/controlboard/{subfolder}")
+                    await asyncio.to_thread(stdout_sub.channel.recv_exit_status)
+                await asyncio.to_thread(sftp.put, src, dest)
+        await asyncio.to_thread(sftp.close)
         
-        ssh.exec_command("cd ~/controlboard && python3 -m venv env && ./env/bin/pip install pyserial requests")
-        ssh.exec_command(f"echo '{payload.password}' | sudo -S usermod -aG dialout {payload.username}")
+        # Check if environment is already configured, otherwise build it
+        check_cmd = "if [ -f ~/controlboard/env/bin/python3 ] && ~/controlboard/env/bin/python3 -c 'import serial, requests' 2>/dev/null; then echo 'OK'; else (python3.13 -m venv env || python3 -m venv env) && ./env/bin/pip install --timeout 3 --retries 1 pyserial requests; fi"
+        stdin_env, stdout_env, stderr_env = ssh.exec_command(f"cd ~/controlboard && {check_cmd}")
+        exit_status = await asyncio.to_thread(stdout_env.channel.recv_exit_status)
+        if exit_status != 0:
+            err = (await asyncio.to_thread(stderr_env.read)).decode(errors='ignore')
+            raise HTTPException(status_code=500, detail=f"Failed to setup python virtual environment: {err}")
+            
+        stdin_usr, stdout_usr, stderr_usr = ssh.exec_command(f"echo '{payload.password}' | sudo -S usermod -aG dialout {payload.username}")
+        await asyncio.to_thread(stdout_usr.channel.recv_exit_status)
         
         # Automatically detect correct serial port on target box
         stdin, stdout, stderr = ssh.exec_command("ls -1 /dev/ttyUSB* 2>/dev/null")
-        ports = [line.strip() for line in stdout.read().decode().split('\n') if line.strip()]
+        await asyncio.to_thread(stdout.channel.recv_exit_status)
+        ports = [line.strip() for line in (await asyncio.to_thread(stdout.read)).decode().split('\n') if line.strip()]
         if not ports:
             raise HTTPException(status_code=404, detail="VSM2 controller not found (no serial ports /dev/ttyUSB* detected on the target box).")
         target_port = ports[0]
         
-        channel = ssh.invoke_shell()
-        channel.send(f"sg dialout -c 'cd ~/controlboard && ~/controlboard/env/bin/python3 -u app.py'\n")
+        channel = await asyncio.to_thread(ssh.invoke_shell)
+        await asyncio.to_thread(channel.send, f"sg dialout -c 'cd ~/controlboard && ~/controlboard/env/bin/python3 -u app.py'\n")
         
         await asyncio.sleep(2.0)
-        channel.send(f"{target_port}\n")
+        await asyncio.to_thread(channel.send, f"{target_port}\n")
         await asyncio.sleep(1.0)
-        channel.send("19200\n")
+        await asyncio.to_thread(channel.send, "19200\n")
         await asyncio.sleep(1.0)
         
         CONSOLE_SESSIONS[username] = (ssh, channel)
@@ -247,11 +296,12 @@ async def console_batch_read(payload: DumpRequest, current_user: User = Depends(
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
-        ssh.connect(payload.ip, port=payload.ssh_port, username=payload.username, password=payload.password, timeout=10)
+        await asyncio.to_thread(ssh.connect, payload.ip, port=payload.ssh_port, username=payload.username, password=payload.password, timeout=10)
         
         # Automatically detect correct serial port on target box
         stdin, stdout, stderr = ssh.exec_command("ls -1 /dev/ttyUSB* 2>/dev/null")
-        ports = [line.strip() for line in stdout.read().decode().split('\n') if line.strip()]
+        await asyncio.to_thread(stdout.channel.recv_exit_status)
+        ports = [line.strip() for line in (await asyncio.to_thread(stdout.read)).decode().split('\n') if line.strip()]
         if not ports:
             raise HTTPException(status_code=404, detail="VSM2 controller not found (no serial ports /dev/ttyUSB* detected on the target box).")
         target_port = ports[0]
@@ -260,10 +310,11 @@ async def console_batch_read(payload: DumpRequest, current_user: User = Depends(
         for p in payload.params:
             cmd = f"sg dialout -c 'cd ~/controlboard && ~/controlboard/env/bin/python3 -u dist/controlboard.py read {p} -p {target_port}'"
             stdin, stdout, stderr = ssh.exec_command(cmd)
-            out = clean_ansi(stdout.read().decode())
-            err = clean_ansi(stderr.read().decode())
+            await asyncio.to_thread(stdout.channel.recv_exit_status)
+            out = clean_ansi((await asyncio.to_thread(stdout.read)).decode())
+            err = clean_ansi((await asyncio.to_thread(stderr.read)).decode())
             results[p] = out if out else f"ERROR: {err}"
-        ssh.close()
+        await asyncio.to_thread(ssh.close)
         return {"status": "success", "results": results}
     except HTTPException:
         raise
