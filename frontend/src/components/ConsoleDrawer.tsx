@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Terminal, Loader2, RefreshCw } from 'lucide-react';
+import { X, Terminal, Loader2, RefreshCw, CheckCircle2, Circle } from 'lucide-react';
 
 interface LogEntry {
   id: string;
@@ -38,6 +38,62 @@ const formatTime = (iso: string): string => {
 };
 
 export default function ConsoleDrawer({ boxId, boxSn, progress, onClose }: ConsoleDrawerProps) {
+  const getStepState = (step: number) => {
+    const currentProgress = progress || 0;
+    if (step === 1) {
+      if (currentProgress >= 16) return 'completed';
+      return 'active';
+    }
+    if (step === 2) {
+      if (currentProgress >= 81) return 'completed';
+      if (currentProgress >= 16) return 'active';
+      return 'pending';
+    }
+    if (step === 3) {
+      if (currentProgress >= 96) return 'completed';
+      if (currentProgress >= 81) return 'active';
+      return 'pending';
+    }
+    if (step === 4) {
+      if (currentProgress === 100) return 'completed';
+      if (currentProgress >= 96) return 'active';
+      return 'pending';
+    }
+    return 'pending';
+  };
+
+  const renderStep = (step: number, title: string) => {
+    const state = getStepState(step);
+    if (state === 'completed') {
+      return (
+        <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-[10px] uppercase tracking-wider">
+          <CheckCircle2 size={13} className="shrink-0" />
+          <span>{title}</span>
+        </div>
+      );
+    }
+    if (state === 'active') {
+      return (
+        <div className="flex items-center gap-1.5 text-indigo-400 font-bold text-[10px] uppercase tracking-wider animate-pulse">
+          <Loader2 size={13} className="animate-spin shrink-0 text-indigo-400" />
+          <span>{title}</span>
+        </div>
+      );
+    }
+    return (
+      <div className="flex items-center gap-1.5 text-zinc-650 font-bold text-[10px] uppercase tracking-wider">
+        <Circle size={13} className="shrink-0 text-zinc-700" />
+        <span>{title}</span>
+      </div>
+    );
+  };
+
+  const renderConnector = (prevStep: number) => {
+    const prevState = getStepState(prevStep);
+    const colorClass = prevState === 'completed' ? 'bg-emerald-500/30' : 'bg-zinc-800';
+    return <div className={`flex-1 h-px ${colorClass} mx-2 hidden sm:block`} />;
+  };
+
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastFetched, setLastFetched] = useState<Date | null>(null);
@@ -138,6 +194,17 @@ export default function ConsoleDrawer({ boxId, boxSn, progress, onClose }: Conso
               <X size={14} />
             </button>
           </div>
+        </div>
+
+        {/* Live Stepper Indicator */}
+        <div className="px-6 py-4 bg-zinc-950 border-b border-zinc-900 flex items-center justify-between gap-1 overflow-x-auto">
+          {renderStep(1, "PXE Boot")}
+          {renderConnector(1)}
+          {renderStep(2, "OS Install")}
+          {renderConnector(2)}
+          {renderStep(3, "Run Scripts")}
+          {renderConnector(3)}
+          {renderStep(4, "Finalizing")}
         </div>
 
         {/* Log body */}
