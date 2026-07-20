@@ -228,8 +228,8 @@ export default function BoxDetailsModal({ box, onClose, onUpdateBox }: BoxDetail
                   <span className="font-mono text-zinc-200">{box.ip_address || 'DHCP (Dynamic)'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-zinc-500">Location</span>
-                  <span className="text-zinc-200">{box.location ? box.location.name : 'Unassigned'}</span>
+                  <span className="text-zinc-500">Provision Profile</span>
+                  <span className="text-zinc-200 font-semibold">{box.location ? `${box.location.name} Profile` : 'Default OS Profile'}</span>
                 </div>
                 {box.location?.timezone && (
                   <div className="flex justify-between">

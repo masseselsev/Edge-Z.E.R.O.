@@ -395,15 +395,15 @@ export default function InventoryTab() {
               </div>
 
               <div>
-                <label className="block text-[10px] uppercase font-bold text-zinc-400 mb-1">{t('location')}</label>
+                <label className="block text-[10px] uppercase font-bold text-zinc-400 mb-1">Provision Profile</label>
                 <select
                   value={newBox.location_id}
                   onChange={(e) => setNewBox({...newBox, location_id: e.target.value})}
-                  className="w-full bg-zinc-900 border border-zinc-800 text-xs text-zinc-200 p-2.5 rounded-lg focus:border-indigo-500 outline-none cursor-pointer"
+                  className="w-full bg-zinc-900 border border-zinc-800 text-xs text-zinc-200 p-2.5 rounded-lg focus:border-indigo-500 outline-none cursor-pointer font-semibold"
                 >
-                  <option value="">None</option>
+                  <option value="">Default OS Profile (System Defaults)</option>
                   {locations.map(loc => (
-                    <option key={loc.id} value={loc.id}>{loc.name}</option>
+                    <option key={loc.id} value={loc.id}>{loc.name} Profile</option>
                   ))}
                 </select>
               </div>
