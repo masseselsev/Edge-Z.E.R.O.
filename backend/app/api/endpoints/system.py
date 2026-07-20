@@ -186,7 +186,41 @@ async def update_settings(
     current_user: User = Depends(deps.get_current_user)
 ):
     updates = []
-    for item in settings_list:
+    
+    # Check if a new root password is provided
+    root_pwd_item = next((item for item in settings_list if item.key == "DEFAULT_ROOT_PASSWORD"), None)
+    if root_pwd_item and root_pwd_item.value:
+        import crypt
+        hashed_val = crypt.crypt(root_pwd_item.value, crypt.mksalt(crypt.METHOD_SHA512))
+        
+        res_hash = await db.execute(select(SystemSettings).where(SystemSettings.key == "DEFAULT_ROOT_PASSWORD_HASH"))
+        setting_hash = res_hash.scalars().first()
+        if setting_hash:
+            setting_hash.value = hashed_val
+        else:
+            new_hash = SystemSettings(key="DEFAULT_ROOT_PASSWORD_HASH", value=hashed_val)
+            db.add(new_hash)
+        updates.append("DEFAULT_ROOT_PASSWORD_HASH=[UPDATED]")
+
+    # Check if a new default user password is provided
+    user_pwd_item = next((item for item in settings_list if item.key == "DEFAULT_USER_PASSWORD"), None)
+    if user_pwd_item and user_pwd_item.value:
+        import crypt
+        hashed_val = crypt.crypt(user_pwd_item.value, crypt.mksalt(crypt.METHOD_SHA512))
+        
+        res_hash = await db.execute(select(SystemSettings).where(SystemSettings.key == "DEFAULT_USER_PASSWORD_HASH"))
+        setting_hash = res_hash.scalars().first()
+        if setting_hash:
+            setting_hash.value = hashed_val
+        else:
+            new_hash = SystemSettings(key="DEFAULT_USER_PASSWORD_HASH", value=hashed_val)
+            db.add(new_hash)
+        updates.append("DEFAULT_USER_PASSWORD_HASH=[UPDATED]")
+        
+    # Filter out plain-text passwords from db writes
+    filtered_list = [item for item in settings_list if item.key not in ("DEFAULT_ROOT_PASSWORD", "DEFAULT_USER_PASSWORD")]
+    
+    for item in filtered_list:
         result = await db.execute(select(SystemSettings).where(SystemSettings.key == item.key))
         setting = result.scalars().first()
         if setting:

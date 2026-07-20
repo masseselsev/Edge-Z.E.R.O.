@@ -19,7 +19,14 @@ d-i mirror/http/directory string /debian
 # Account setup
 d-i passwd/root-login boolean true
 d-i passwd/root-password-crypted password {{ root_password_hash | default('$6$rounds=4096$salt$placeholder') }}
+{% if create_default_user %}
+d-i passwd/make-user boolean true
+d-i passwd/user-fullname string {{ default_user_fullname | default('Default User') }}
+d-i passwd/username string {{ default_username | default('user') }}
+d-i passwd/user-password-crypted password {{ default_user_password_hash | default('$6$rounds=4096$salt$placeholder') }}
+{% else %}
 d-i passwd/make-user boolean false
+{% endif %}
 
 # Clock and time zone
 d-i clock-setup/utc boolean true

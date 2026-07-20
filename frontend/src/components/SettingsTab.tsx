@@ -328,6 +328,107 @@ export default function SettingsTab() {
                     placeholder="ssh-rsa AAAA..."
                   />
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-zinc-850/50">
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-zinc-500 mb-1">{t('settingsDefaultLocale')}</label>
+                    <select
+                      value={getSetting('DEFAULT_LOCALE', 'en_US.UTF-8')}
+                      onChange={(e) => updateSettingValue('DEFAULT_LOCALE', e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 p-2.5 rounded-lg outline-none cursor-pointer"
+                    >
+                      <option value="en_US.UTF-8">English (en_US.UTF-8)</option>
+                      <option value="ru_RU.UTF-8">Russian (ru_RU.UTF-8)</option>
+                      <option value="uk_UA.UTF-8">Ukrainian (uk_UA.UTF-8)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-zinc-500 mb-1">{t('settingsDefaultKeyboard')}</label>
+                    <select
+                      value={getSetting('DEFAULT_KEYBOARD', 'us')}
+                      onChange={(e) => updateSettingValue('DEFAULT_KEYBOARD', e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 p-2.5 rounded-lg outline-none cursor-pointer"
+                    >
+                      <option value="us">United States (us)</option>
+                      <option value="ru">Russian (ru)</option>
+                      <option value="ua">Ukrainian (ua)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-zinc-500 mb-1">{t('settingsDefaultMirror')}</label>
+                    <input
+                      type="text"
+                      value={getSetting('DEFAULT_PACKAGE_MIRROR', 'deb.debian.org')}
+                      onChange={(e) => updateSettingValue('DEFAULT_PACKAGE_MIRROR', e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 p-2.5 rounded-lg outline-none font-mono"
+                      placeholder="e.g. deb.debian.org"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-zinc-500 mb-1">{t('settingsDefaultNtp')}</label>
+                    <input
+                      type="text"
+                      value={getSetting('DEFAULT_NTP', 'pool.ntp.org')}
+                      onChange={(e) => updateSettingValue('DEFAULT_NTP', e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 p-2.5 rounded-lg outline-none font-mono"
+                      placeholder="e.g. pool.ntp.org"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-zinc-500 mb-1">{t('settingsDefaultRootPassword')}</label>
+                  <input
+                    type="password"
+                    value={getSetting('DEFAULT_ROOT_PASSWORD')}
+                    onChange={(e) => updateSettingValue('DEFAULT_ROOT_PASSWORD', e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 p-2.5 rounded-lg outline-none font-mono"
+                    placeholder="••••••••"
+                  />
+                  <p className="text-[9px] text-zinc-500 mt-1">{t('descDefaultRootPassword')}</p>
+                </div>
+
+                <div className="pt-3 border-t border-zinc-850/50 space-y-4">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block">Default Normal User Account</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-zinc-500 mb-1">Default Username</label>
+                      <input
+                        type="text"
+                        value={getSetting('DEFAULT_USER_USERNAME')}
+                        onChange={(e) => updateSettingValue('DEFAULT_USER_USERNAME', e.target.value)}
+                        className="w-full bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 p-2.5 rounded-lg outline-none"
+                        placeholder="e.g. user (leave blank to disable user creation)"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-zinc-500 mb-1">User Full Name</label>
+                      <input
+                        type="text"
+                        value={getSetting('DEFAULT_USER_FULLNAME')}
+                        onChange={(e) => updateSettingValue('DEFAULT_USER_FULLNAME', e.target.value)}
+                        className="w-full bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 p-2.5 rounded-lg outline-none"
+                        placeholder="e.g. Default User"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-zinc-500 mb-1">User Password</label>
+                    <input
+                      type="password"
+                      value={getSetting('DEFAULT_USER_PASSWORD')}
+                      onChange={(e) => updateSettingValue('DEFAULT_USER_PASSWORD', e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 p-2.5 rounded-lg outline-none font-mono"
+                      placeholder="••••••••"
+                    />
+                    <p className="text-[9px] text-zinc-500 mt-1">Leave blank to keep existing password.</p>
+                  </div>
+                </div>
               </div>
 
               {/* DHCP settings section */}
