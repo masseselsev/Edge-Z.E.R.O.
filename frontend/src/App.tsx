@@ -98,7 +98,7 @@ export function AppContent() {
       case 'library':
         return <LibraryTab />;
       case 'scripts':
-        return <InitScriptsTab />;
+        return <LibraryTab initialSubTab="scripts" />;
       case 'logs':
         return <LogsTab />;
       case 'settings':

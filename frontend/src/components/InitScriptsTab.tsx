@@ -8,7 +8,11 @@ interface InitScript {
   hardware_comment: string | null;
 }
 
-export default function InitScriptsTab() {
+interface InitScriptsTabProps {
+  embedded?: boolean;
+}
+
+export default function InitScriptsTab({ embedded = false }: InitScriptsTabProps) {
   const { t } = useTranslation();
   const [scripts, setScripts] = useState<InitScript[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,11 +84,13 @@ export default function InitScriptsTab() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-zinc-100">{t('tabInitScripts')}</h2>
+      {!embedded && (
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight text-zinc-100">{t('tabInitScripts')}</h2>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Scripts List */}

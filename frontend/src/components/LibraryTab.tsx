@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from '../context/TranslationContext';
-import { Upload, Plus, Trash2, Library, Disc, Layers } from 'lucide-react';
+import { Upload, Plus, Trash2, Library, Disc, Layers, FileCode } from 'lucide-react';
+import InitScriptsTab from './InitScriptsTab';
 
 interface OsImage {
   id: string;
@@ -23,9 +24,13 @@ interface ComponentGroup {
   description: string;
 }
 
-export default function LibraryTab() {
+interface LibraryTabProps {
+  initialSubTab?: 'images' | 'scripts' | 'components' | 'templates';
+}
+
+export default function LibraryTab({ initialSubTab = 'images' }: LibraryTabProps) {
   const { t } = useTranslation();
-  const [subTab, setSubTab] = useState<'images' | 'components' | 'templates'>('images');
+  const [subTab, setSubTab] = useState<'images' | 'scripts' | 'components' | 'templates'>(initialSubTab);
   
   // Data State
   const [images, setImages] = useState<OsImage[]>([]);
@@ -191,6 +196,15 @@ export default function LibraryTab() {
           <span>OS ISO Images</span>
         </button>
         <button
+          onClick={() => setSubTab('scripts')}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            subTab === 'scripts' ? 'bg-zinc-900 border border-zinc-800 text-zinc-100' : 'text-zinc-500 hover:text-zinc-350'
+          }`}
+        >
+          <FileCode size={13} />
+          <span>Init Scripts</span>
+        </button>
+        <button
           onClick={() => setSubTab('components')}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
             subTab === 'components' ? 'bg-zinc-900 border border-zinc-800 text-zinc-100' : 'text-zinc-500 hover:text-zinc-350'
@@ -209,6 +223,9 @@ export default function LibraryTab() {
           <span>Templates</span>
         </button>
       </div>
+
+      {/* Init Scripts panel */}
+      {subTab === 'scripts' && <InitScriptsTab embedded />}
 
       {/* OS Images panel */}
       {subTab === 'images' && (

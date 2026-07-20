@@ -112,7 +112,6 @@ export default function Header({ activeTab, setActiveTab, currentUser, onLogout,
     { id: 'inventory', label: t('tabInventory'), icon: <Server size={14} /> },
     { id: 'profiles', label: t('tabProfiles'), icon: <Sliders size={14} /> },
     { id: 'library', label: t('tabLibrary'), icon: <Library size={14} /> },
-    { id: 'scripts', label: t('tabInitScripts'), icon: <ScrollText size={14} /> },
     { id: 'logs', label: t('tabLogs'), icon: <Terminal size={14} /> },
     { id: 'settings', label: t('tabSettings'), icon: <Settings size={14} /> },
     { 
