@@ -24,6 +24,11 @@ interface Box {
   components: any[];
 }
 
+interface UnregisteredDevice {
+  mac: string;
+  ip: string;
+}
+
 export default function InventoryTab() {
   const { t } = useTranslation();
   const [boxes, setBoxes] = useState<Box[]>([]);
@@ -47,17 +52,19 @@ export default function InventoryTab() {
     location_id: ''
   });
 
-  const [unregisteredMacs, setUnregisteredMacs] = useState<string[]>([]);
+  const [unregisteredDevices, setUnregisteredDevices] = useState<UnregisteredDevice[]>([]);
   const [isMacLocked, setIsMacLocked] = useState(false);
 
   const fetchUnregistered = async () => {
     try {
       const res = await fetch('/api/boxes/unregistered');
       if (res.ok) {
-        setUnregisteredMacs(await res.json());
+        const data = await res.json();
+        const parsed = data.map((item: any) => typeof item === 'string' ? { mac: item, ip: '' } : item);
+        setUnregisteredDevices(parsed);
       }
     } catch (err) {
-      console.error('Failed to fetch unregistered MACs:', err);
+      console.error('Failed to fetch unregistered devices:', err);
     }
   };
 
@@ -67,11 +74,11 @@ export default function InventoryTab() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleRegisterUnregistered = (mac: string) => {
+  const handleRegisterUnregistered = (dev: UnregisteredDevice) => {
     setNewBox({
       internal_sn: '',
-      mac_address: mac,
-      ip_address: '',
+      mac_address: dev.mac,
+      ip_address: dev.ip || '',
       location_id: ''
     });
     setIsMacLocked(true);
@@ -132,6 +139,21 @@ export default function InventoryTab() {
       }
     } catch (err) {
       console.error('Failed to add box:', err);
+    }
+  };
+
+  const handleStartProvisioning = async (id: string) => {
+    try {
+      const res = await fetch('/api/boxes/batch/provision', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify([id])
+      });
+      if (res.ok) {
+        fetchData();
+      }
+    } catch (err) {
+      console.error('Failed to start provisioning:', err);
     }
   };
 
@@ -247,18 +269,21 @@ export default function InventoryTab() {
       </div>
 
       {/* Unregistered Devices Banner */}
-      {unregisteredMacs.length > 0 && (
+      {unregisteredDevices.length > 0 && (
         <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl flex flex-col gap-3 animate-fade-in mb-4">
           <div className="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-wider">
             <AlertTriangle size={14} className="animate-pulse" />
             <span>Unregistered Devices Detected</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {unregisteredMacs.map(mac => (
-              <div key={mac} className="flex justify-between items-center p-2.5 bg-zinc-950/40 border border-zinc-900 rounded-lg gap-3">
-                <span className="font-mono text-xs text-zinc-300">{mac}</span>
+            {unregisteredDevices.map(dev => (
+              <div key={dev.mac} className="flex justify-between items-center p-2.5 bg-zinc-950/40 border border-zinc-900 rounded-lg gap-3">
+                <div className="flex items-center gap-2 font-mono text-xs text-zinc-300">
+                  <span>{dev.mac}</span>
+                  {dev.ip && <span className="text-zinc-500 font-normal">({dev.ip})</span>}
+                </div>
                 <button
-                  onClick={() => handleRegisterUnregistered(mac)}
+                  onClick={() => handleRegisterUnregistered(dev)}
                   className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-lg text-[10px] font-bold transition-all cursor-pointer shadow-md"
                 >
                   [+] Register Box
@@ -329,6 +354,16 @@ export default function InventoryTab() {
                   <td className="px-6 py-4">{box.location ? box.location.name : '—'}</td>
                   <td className="px-6 py-4">{getStatusBadge(box)}</td>
                   <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                    {box.status !== 'INSTALLING' && (
+                      <button
+                        onClick={() => handleStartProvisioning(box.id)}
+                        className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+                        title="Start Provisioning / Install OS"
+                      >
+                        <PlayCircle size={14} />
+                        <span>Install</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDeleteBox(box.id)}
                       className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded transition-all cursor-pointer"

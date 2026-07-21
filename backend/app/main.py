@@ -68,8 +68,22 @@ async def monitor_heartbeats():
 async def startup_event():
     import asyncio
     import threading
+    from app.db.session import AsyncSessionLocal
+    from app.api.endpoints.system import regenerate_dnsmasq_conf
+    from app.services.pxe_gen import generate_pxe_config
     from app.services.syslog_listener import start_syslog_listener
     from app.services.vsm2_repo import sync_repo
+    
+    # Auto-regenerate PXE and dnsmasq configurations from database on startup
+    try:
+        async with AsyncSessionLocal() as db:
+            await regenerate_dnsmasq_conf(db)
+            await generate_pxe_config(db)
+            print("Successfully synchronized PXE/DNSMasq configurations from database.")
+    except Exception as e:
+        import sys
+        print(f"Error regenerating PXE configs on startup: {e}", file=sys.stderr)
+
     asyncio.create_task(monitor_heartbeats())
     asyncio.create_task(start_syslog_listener())
     threading.Thread(target=sync_repo, daemon=True).start()

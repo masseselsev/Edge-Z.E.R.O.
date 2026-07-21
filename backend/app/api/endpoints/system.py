@@ -147,6 +147,8 @@ async def regenerate_dnsmasq_conf(db: AsyncSession):
     if mode == "proxy":
         subnet = ".".join(range_start.split(".")[:-1]) + ".0"
         lines.append(f"dhcp-range={subnet},proxy")
+        lines.append("pxe-service=tag:!ipxe,X86PC,\"Boot BIOS PXE\",undionly.kpxe")
+        lines.append("pxe-service=tag:!ipxe,x86-64_EFI,\"Boot UEFI PXE-64\",ipxe.efi")
     else:
         lines.append(f"dhcp-range={range_start},{range_end},{netmask},12h")
         lines.append(f"dhcp-option=option:router,{gateway}")
@@ -246,6 +248,7 @@ async def update_settings(
             updates.append(f"{item.key}={item.value}")
     
     await db.commit()
+    await regenerate_dnsmasq_conf(db)
     await log_user_action(db, current_user.username, "UPDATE_SETTINGS", f"Updated settings: {', '.join(updates)}", request)
     return {"status": "updated"}
 

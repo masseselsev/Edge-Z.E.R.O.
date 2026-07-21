@@ -467,11 +467,11 @@ async def get_boot_ipxe(mac: str, db: AsyncSession = Depends(get_db)):
     if not box:
         script = [
             "#!ipxe",
-            "echo -------------------------------------------------------------",
+            "echo =============================================================",
             "echo UNREGISTERED DEVICE DETECTED",
             f"echo MAC Address: {mac.upper()}",
             "echo Please register this device in the Edge-Z.E.R.O. dashboard.",
-            "echo -------------------------------------------------------------",
+            "echo =============================================================",
             "sleep 10",
             f"chain http://{settings.API_HOST}:{settings.API_PORT}/api/provision/{mac}/boot.ipxe"
         ]
@@ -506,13 +506,13 @@ async def get_boot_ipxe(mac: str, db: AsyncSession = Depends(get_db)):
 
         kernel = f"tftp://${{next-server}}/images/{image_dir}/{kernel_file}"
         initrd = f"tftp://${{next-server}}/images/{image_dir}/{initrd_file}"
-        iso_url = f"http://{settings.API_HOST}:{settings.API_PORT}/isos/{box.os_image.filename}"
+        iso_filename = box.os_image.filename if box.os_image else "debian.iso"
+        iso_url = f"http://{settings.API_HOST}:{settings.API_PORT}/isos/{iso_filename}"
         
-        # Build kernel command line based on OS type
-        # os_type is usually an Enum, let's check its value
         from app.models.os_image import OsType
+        os_type_val = box.os_image.os_type if box.os_image else OsType.DEBIAN
         
-        if box.os_image.os_type == OsType.UBUNTU:
+        if os_type_val == OsType.UBUNTU:
             cmdline = f"initrd={initrd_file} ip=dhcp url={iso_url} autoinstall ds=nocloud-net;s=http://{settings.API_HOST}:{settings.API_PORT}/api/provision/{mac}/"
         else:
             # Debian / Other
@@ -520,12 +520,24 @@ async def get_boot_ipxe(mac: str, db: AsyncSession = Depends(get_db)):
 
         script = f"""#!ipxe
 echo Starting Edge-Z.E.R.O. Network Installer for MAC {mac}
-echo Using image: {image_dir} (Type: {box.os_image.os_type})
+echo Using image: {image_dir}
 kernel {kernel} {cmdline}
 initrd {initrd}
 boot
 """
         return Response(content=script, media_type="text/plain")
+    elif box.status in [BoxStatus.NEW, BoxStatus.STAGING]:
+        script = [
+            "#!ipxe",
+            "echo =============================================================",
+            f"echo REGISTERED DEVICE: {box.internal_sn} ({mac.upper()})",
+            f"echo Status: {box.status.value}",
+            "echo Waiting for 'Start Provisioning' command from dashboard...",
+            "echo =============================================================",
+            "sleep 10",
+            f"chain http://{settings.API_HOST}:{settings.API_PORT}/api/provision/{mac}/boot.ipxe"
+        ]
+        return Response(content="\n".join(script), media_type="text/plain")
     else:
         return Response(content="#!ipxe\nexit", media_type="text/plain")
 

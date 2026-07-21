@@ -26,7 +26,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql+asyncpg://edge_zero:edge_zero_password@db:5432/edge_zero
-      API_HOST: 192.168.222.2
+      API_HOST: ${API_HOST:-192.168.222.2}
       API_PORT: 7000
     volumes:
       - ./backend:/app

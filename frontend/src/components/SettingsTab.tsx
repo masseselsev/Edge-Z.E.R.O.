@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from '../context/TranslationContext';
-import { Save, Plus, Trash2, Users, Shield, Edit, Info } from 'lucide-react';
+import { Save, Plus, Trash2, Users, Shield, Edit, Info, Check, X } from 'lucide-react';
 
 interface SettingItem {
   key: string;
@@ -25,6 +25,7 @@ export default function SettingsTab() {
   const [settings, setSettings] = useState<SettingItem[]>([]);
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   // Users State
   const [users, setUsers] = useState<UserAccount[]>([]);
@@ -78,6 +79,7 @@ export default function SettingsTab() {
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingSettings(true);
+    setSaveStatus('idle');
     try {
       // Exclude Project Name and language keys if they happen to remain in frontend state
       const res = await fetch('/api/system/settings', {
@@ -86,10 +88,16 @@ export default function SettingsTab() {
         body: JSON.stringify(settings)
       });
       if (res.ok) {
-        alert('Settings updated successfully!');
+        setSaveStatus('success');
+        setTimeout(() => setSaveStatus('idle'), 3000);
+      } else {
+        setSaveStatus('error');
+        setTimeout(() => setSaveStatus('idle'), 3000);
       }
     } catch (err) {
       console.error(err);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
     } finally {
       setSavingSettings(false);
     }
@@ -311,6 +319,21 @@ export default function SettingsTab() {
                     </div>
                   </>
                 )}
+                {getSetting('DHCP_MODE', 'full') === 'proxy' && (
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-zinc-500 mb-1">Proxy Subnet IP (e.g. 192.168.188.0)</label>
+                      <input
+                        type="text"
+                        value={getSetting('DHCP_RANGE_START', '192.168.222.100')}
+                        onChange={(e) => updateSettingValue('DHCP_RANGE_START', e.target.value)}
+                        className="w-full bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 p-2.5 rounded-lg outline-none font-mono"
+                        placeholder="192.168.188.0"
+                      />
+                      <p className="text-[9px] text-zinc-500 mt-1">Any IP address in your local network subnet. It is used to determine the subnet for Proxy DHCP.</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Edge-B.R.O. Integration credentials card */}
@@ -353,11 +376,31 @@ export default function SettingsTab() {
               <div className="pt-4 border-t border-zinc-850 flex items-center justify-end">
                 <button
                   type="submit"
-                  disabled={savingSettings}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-md"
+                  disabled={savingSettings || saveStatus !== 'idle'}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-md ${
+                    saveStatus === 'success'
+                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                      : saveStatus === 'error'
+                      ? 'bg-rose-600 hover:bg-rose-500 text-white'
+                      : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                  }`}
                 >
-                  <Save size={14} />
-                  <span>{savingSettings ? 'Saving...' : t('save')}</span>
+                  {saveStatus === 'success' ? (
+                    <>
+                      <Check size={14} className="animate-bounce" />
+                      <span>{t('settingsSaved') || 'Saved!'}</span>
+                    </>
+                  ) : saveStatus === 'error' ? (
+                    <>
+                      <X size={14} />
+                      <span>Error!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={14} />
+                      <span>{savingSettings ? 'Saving...' : t('save')}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
@@ -482,11 +525,31 @@ export default function SettingsTab() {
               <div className="pt-2 flex items-center justify-end">
                 <button
                   type="submit"
-                  disabled={savingSettings}
-                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all cursor-pointer shadow-md"
+                  disabled={savingSettings || saveStatus !== 'idle'}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-md ${
+                    saveStatus === 'success'
+                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                      : saveStatus === 'error'
+                      ? 'bg-rose-600 hover:bg-rose-500 text-white'
+                      : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                  }`}
                 >
-                  <Save size={13} />
-                  <span>{savingSettings ? 'Saving...' : t('save')}</span>
+                  {saveStatus === 'success' ? (
+                    <>
+                      <Check size={13} className="animate-bounce" />
+                      <span>{t('settingsSaved') || 'Saved!'}</span>
+                    </>
+                  ) : saveStatus === 'error' ? (
+                    <>
+                      <X size={13} />
+                      <span>Error!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={13} />
+                      <span>{savingSettings ? 'Saving...' : t('save')}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>

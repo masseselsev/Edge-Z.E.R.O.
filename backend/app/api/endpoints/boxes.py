@@ -4,6 +4,7 @@ from sqlalchemy import select, cast, delete, update, asc
 from sqlalchemy.dialects.postgresql import MACADDR
 from typing import List, Optional
 from uuid import UUID
+from pydantic import BaseModel
 import csv
 import io
 
@@ -20,7 +21,7 @@ router = APIRouter()
 
 from app.models.component import Component as ComponentModel
 from app.schemas.box import ComponentCreate, Component as ComponentSchema
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from app.services.pxe_gen import generate_pxe_config
 
 # ...
@@ -95,8 +96,9 @@ async def _apply_group_logic(box_id: UUID, group_id: UUID, db: AsyncSession):
             db.add(comp)
             count_added += 1
             
-    await db.commit()
     return count_added
+
+@router.get("/stats")
 async def get_stats(db: AsyncSession = Depends(get_db)):
     # Total boxes
     result_total = await db.execute(select(BoxModel))
@@ -173,7 +175,63 @@ async def create_box(
 
     return db_box
 
-from sqlalchemy.orm import selectinload
+class UnregisteredDevice(BaseModel):
+    mac: str
+    ip: str = ""
+
+@router.get("/unregistered", response_model=List[UnregisteredDevice])
+async def get_unregistered_devices(db: AsyncSession = Depends(get_db)):
+    import os
+    import re
+    
+    log_path = "/mnt/infra_config/dnsmasq.log"
+    if not os.path.exists(log_path):
+        return []
+        
+    mac_to_ip = {}
+    try:
+        with open(log_path, "r") as f:
+            lines = f.readlines()
+    except Exception:
+        return []
+        
+    mac_regex = re.compile(r"([0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2})")
+    ip_regex = re.compile(r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})")
+    
+    # Pre-parse TFTP lines to extract recent client IP addresses
+    tftp_ips = []
+    for line in reversed(lines):
+        if "dnsmasq-tftp" in line and "sent" in line:
+            m_ip = ip_regex.search(line)
+            if m_ip:
+                tftp_ips.append(m_ip.group(1))
+    
+    latest_tftp_ip = tftp_ips[0] if tftp_ips else ""
+
+    for line in reversed(lines):
+        if "dnsmasq-dhcp" in line and ("DHCPDISCOVER" in line or "DHCPREQUEST" in line or "DHCPINFORM" in line or "PXE" in line):
+            m_mac = mac_regex.search(line)
+            if m_mac:
+                mac = m_mac.group(1).upper()
+                if mac not in mac_to_ip:
+                    m_ip = ip_regex.search(line)
+                    ip = m_ip.group(1) if m_ip else latest_tftp_ip
+                    mac_to_ip[mac] = ip
+                if len(mac_to_ip) >= 20:
+                    break
+                    
+    if not mac_to_ip:
+        return []
+        
+    result = await db.execute(select(BoxModel.mac_address))
+    registered_macs = set(str(m[0]).upper() for m in result.all() if m[0])
+    
+    unregistered = [
+        {"mac": mac, "ip": ip}
+        for mac, ip in mac_to_ip.items()
+        if mac not in registered_macs
+    ]
+    return unregistered
 
 @router.get("/{box_id}", response_model=Box)
 async def read_box(box_id: UUID, db: AsyncSession = Depends(get_db)):
@@ -525,39 +583,3 @@ async def get_provisioning_logs(
         }
         for log in logs
     ]
-
-@router.get("/unregistered", response_model=List[str])
-async def get_unregistered_devices(db: AsyncSession = Depends(get_db)):
-    import os
-    import re
-    
-    log_path = "/mnt/infra_config/dnsmasq.log"
-    if not os.path.exists(log_path):
-        return []
-        
-    macs_seen = set()
-    try:
-        with open(log_path, "r") as f:
-            lines = f.readlines()
-    except Exception:
-        return []
-        
-    mac_regex = re.compile(r"([0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2})")
-    
-    for line in reversed(lines):
-        if "dnsmasq-dhcp" in line and ("DHCPDISCOVER" in line or "DHCPREQUEST" in line or "DHCPINFORM" in line):
-            match = mac_regex.search(line)
-            if match:
-                mac = match.group(1).upper()
-                macs_seen.add(mac)
-                if len(macs_seen) >= 20:
-                    break
-                    
-    if not macs_seen:
-        return []
-        
-    result = await db.execute(select(BoxModel.mac_address))
-    registered_macs = set(str(m[0]).upper() for m in result.all() if m[0])
-    
-    unregistered = list(macs_seen - registered_macs)
-    return unregistered

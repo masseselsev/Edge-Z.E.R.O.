@@ -25,7 +25,7 @@ fi
       if [ "$CURRENT_MD5" != "$LAST_MD5" ]; then
         if [ -n "$LAST_MD5" ]; then
           echo "[Infra] dnsmasq.conf changed, restarting dnsmasq..."
-          killall dnsmasq || true
+          pkill -f dnsmasq || kill $(pidof dnsmasq) || true
           sleep 1
           dnsmasq --conf-file=/mnt/infra_config/dnsmasq.conf --log-dhcp --no-daemon &
         fi

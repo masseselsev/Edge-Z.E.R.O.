@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y \
     nginx \
     syslinux-common \
     pxelinux \
+    ipxe \
     grub-efi-amd64-bin \
     grub-efi-amd64-signed \
     shim-signed \
@@ -31,6 +32,8 @@ RUN mkdir -p /tftpboot && \
     cp /usr/lib/syslinux/modules/bios/ldlinux.c32 /tftpboot/ && \
     cp /usr/lib/syslinux/modules/bios/menu.c32 /tftpboot/ && \
     cp /usr/lib/syslinux/modules/bios/libutil.c32 /tftpboot/ && \
-    cp /usr/lib/syslinux/modules/bios/libcom32.c32 /tftpboot/
+    cp /usr/lib/syslinux/modules/bios/libcom32.c32 /tftpboot/ && \
+    cp /usr/lib/ipxe/ipxe.efi /tftpboot/ && \
+    cp /usr/lib/ipxe/undionly.kpxe /tftpboot/
 
 ENTRYPOINT ["/entrypoint.sh"]
