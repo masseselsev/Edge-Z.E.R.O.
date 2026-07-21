@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from '../context/TranslationContext';
-import { Play, Terminal, Database, Sliders, RefreshCw, Trash2, Clipboard, Download, Check, HelpCircle, HardDrive } from 'lucide-react';
+import { Play, Terminal, Database, Sliders, RefreshCw, Trash2, Clipboard, Download, Check, HelpCircle, HardDrive, Plus } from 'lucide-react';
 
 interface RepoInfo {
   exists: boolean;
@@ -75,6 +75,11 @@ export default function Vsm2FlasherTab() {
   const [consoleConnected, setConsoleConnected] = useState(false);
   const [consoleBanner, setConsoleBanner] = useState('');
   const [consoleInput, setConsoleInput] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const filteredCommands = consoleCommands.filter(c => 
+    c.value.toLowerCase().includes(consoleInput.toLowerCase()) ||
+    c.label.toLowerCase().includes(consoleInput.toLowerCase())
+  );
   const [consoleOutput, setConsoleOutput] = useState<string[]>([]);
   const [connecting, setConnecting] = useState(false);
   const [sendingCmd, setSendingCmd] = useState(false);
@@ -418,13 +423,59 @@ export default function Vsm2FlasherTab() {
                     ))}
                   </div>
 
-                  <form onSubmit={(e) => { e.preventDefault(); handleConsoleSend(); }} className="flex border border-zinc-800 rounded-xl overflow-hidden bg-zinc-950">
-                    <input type="text" list="console-commands" value={consoleInput} onChange={(e) => setConsoleInput(e.target.value)} disabled={sendingCmd} className="flex-1 bg-transparent text-xs text-zinc-200 p-3 outline-none focus:bg-zinc-900 transition-colors" placeholder="Type a command (e.g., read temp) and press Enter..." />
-                    <datalist id="console-commands">
-                      {consoleCommands.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                    </datalist>
-                    <button type="submit" disabled={sendingCmd || !consoleInput} className="px-6 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold cursor-pointer disabled:opacity-40 transition-colors">Send</button>
-                  </form>
+                  <div className="relative">
+                    <form onSubmit={(e) => { e.preventDefault(); handleConsoleSend(); setShowDropdown(false); }} className="flex border border-zinc-800 rounded-xl overflow-hidden bg-zinc-950">
+                      <input
+                        type="text"
+                        value={consoleInput}
+                        onChange={(e) => { setConsoleInput(e.target.value); setShowDropdown(true); }}
+                        onFocus={() => setShowDropdown(true)}
+                        onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                        disabled={sendingCmd}
+                        className="flex-1 bg-transparent text-xs text-zinc-200 p-3 outline-none focus:bg-zinc-900 transition-colors"
+                        placeholder="Type a command (e.g., read temp) and press Enter..."
+                      />
+                      <button type="submit" disabled={sendingCmd || !consoleInput} className="px-6 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold cursor-pointer disabled:opacity-40 transition-colors">Send</button>
+                    </form>
+
+                    {showDropdown && filteredCommands.length > 0 && (
+                      <div className="absolute left-0 right-0 z-50 mt-1 max-h-60 overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl shadow-2xl divide-y divide-zinc-900/60 scrollbar-thin">
+                        {filteredCommands.map(c => {
+                          const isShortcut = quickActions.includes(c.value);
+                          return (
+                            <div
+                              key={c.value}
+                              onClick={() => { setConsoleInput(c.value); setShowDropdown(false); }}
+                              className="flex items-center justify-between px-3 py-2.5 hover:bg-zinc-900 cursor-pointer transition-colors group"
+                            >
+                              <div className="flex flex-col text-left">
+                                <span className="text-xs font-mono font-bold text-zinc-200">{c.value}</span>
+                                <span className="text-[10px] text-zinc-500">{c.label}</span>
+                              </div>
+                              {isShortcut ? (
+                                <div className="p-1.5 text-emerald-500" title="Already in shortcuts">
+                                  <Check size={13} />
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const updated = [...quickActions, c.value];
+                                    saveShortcuts(updated);
+                                  }}
+                                  className="p-1.5 hover:bg-zinc-850 rounded text-zinc-500 hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-all cursor-pointer flex items-center justify-center"
+                                  title="Add to shortcuts"
+                                >
+                                  <Plus size={13} />
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-zinc-800 rounded-xl mt-2 text-zinc-500">
