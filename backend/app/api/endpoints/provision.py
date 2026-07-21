@@ -480,14 +480,18 @@ async def get_boot_ipxe(mac: str, db: AsyncSession = Depends(get_db)):
     if box.status == BoxStatus.INSTALLING:
         preseed_url = f"http://{settings.API_HOST}:{settings.API_PORT}/api/provision/{mac}/preseed.cfg"
         
-        # Determine image directory from os_image filename
+        # Determine image directory from os_image filename or pick first available image
         image_dir = "debian-installer"
         if box.os_image:
             image_dir = box.os_image.filename.replace(".iso", "").replace(".ISO", "")
         
-        # Auto-detect kernel and initrd filenames in the directory
-        # We check the directory on the filesystem
-        img_path = os.path.join("/mnt/infra_config/tftp/images", image_dir)
+        base_img_path = "/mnt/infra_config/tftp/images"
+        img_path = os.path.join(base_img_path, image_dir)
+        if not os.path.exists(img_path) and os.path.exists(base_img_path):
+            available_dirs = [d for d in os.listdir(base_img_path) if os.path.isdir(os.path.join(base_img_path, d))]
+            if available_dirs:
+                image_dir = available_dirs[0]
+                img_path = os.path.join(base_img_path, image_dir)
         kernel_file = "vmlinuz"
         initrd_file = "initrd.gz"
         
