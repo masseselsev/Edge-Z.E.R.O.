@@ -314,8 +314,8 @@ export default function Vsm2FlasherTab() {
               </div>
 
               {consoleConnected ? (
-                <div className="flex-1 flex flex-col border border-zinc-800 rounded-xl overflow-hidden bg-black mt-2">
-                  <div className="flex-1 p-4 font-mono text-xs overflow-y-auto max-h-[300px] min-h-[250px] space-y-1.5 scrollbar-thin select-text">
+                <div className="flex-1 flex flex-col mt-2 space-y-3">
+                  <div className="flex-1 p-4 border border-zinc-800 rounded-xl bg-black font-mono text-xs overflow-y-auto max-h-[300px] min-h-[250px] space-y-1.5 scrollbar-thin select-text">
                     <div className="text-indigo-400 font-bold border-b border-zinc-900 pb-2 mb-2">{consoleBanner}</div>
                     {consoleOutput.map((l, i) => (
                       <div key={i} className={l.startsWith('>') ? 'text-indigo-300 font-bold mt-2' : 'text-zinc-300 whitespace-pre-wrap font-mono'}>
@@ -324,12 +324,12 @@ export default function Vsm2FlasherTab() {
                     ))}
                   </div>
 
-                  <form onSubmit={(e) => { e.preventDefault(); handleConsoleSend(); }} className="flex border-t border-zinc-850">
-                    <input type="text" list="console-commands" value={consoleInput} onChange={(e) => setConsoleInput(e.target.value)} disabled={sendingCmd} className="flex-1 bg-zinc-950 text-xs text-zinc-200 p-3 outline-none focus:bg-zinc-900 transition-colors" placeholder="Type a command (e.g., read temp) and press Enter..." />
+                  <form onSubmit={(e) => { e.preventDefault(); handleConsoleSend(); }} className="flex border border-zinc-800 rounded-xl overflow-hidden bg-zinc-950">
+                    <input type="text" list="console-commands" value={consoleInput} onChange={(e) => setConsoleInput(e.target.value)} disabled={sendingCmd} className="flex-1 bg-transparent text-xs text-zinc-200 p-3 outline-none focus:bg-zinc-900 transition-colors" placeholder="Type a command (e.g., read temp) and press Enter..." />
                     <datalist id="console-commands">
                       {consoleCommands.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                     </datalist>
-                    <button type="submit" disabled={sendingCmd || !consoleInput} className="px-6 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold cursor-pointer disabled:opacity-40">Send</button>
+                    <button type="submit" disabled={sendingCmd || !consoleInput} className="px-6 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold cursor-pointer disabled:opacity-40 transition-colors">Send</button>
                   </form>
                 </div>
               ) : (
