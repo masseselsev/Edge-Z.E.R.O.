@@ -134,6 +134,13 @@ export default function Vsm2FlasherTab() {
       if (res.ok) {
         const data = await res.json();
         setConsoleBanner(data.banner);
+        const initialOutput = [];
+        if (data.scan_logs) {
+          initialOutput.push(...data.scan_logs);
+          initialOutput.push("");
+        }
+        initialOutput.push(data.banner);
+        setConsoleOutput(initialOutput);
         setConsoleConnected(true);
       } else {
         const err = await res.json();
@@ -316,7 +323,6 @@ export default function Vsm2FlasherTab() {
               {consoleConnected ? (
                 <div className="flex-1 flex flex-col mt-2 space-y-3">
                   <div className="flex-1 p-4 border border-zinc-800 rounded-xl bg-black font-mono text-xs overflow-y-auto max-h-[300px] min-h-[250px] space-y-1.5 scrollbar-thin select-text">
-                    <div className="text-indigo-400 font-bold border-b border-zinc-900 pb-2 mb-2">{consoleBanner}</div>
                     {consoleOutput.map((l, i) => (
                       <div key={i} className={l.startsWith('>') ? 'text-indigo-300 font-bold mt-2' : 'text-zinc-300 whitespace-pre-wrap font-mono'}>
                         {l}

@@ -275,16 +275,25 @@ async def console_connect(payload: ConsoleConnectRequest, current_user: User = D
             raise HTTPException(status_code=404, detail="VSM2 controller not found (no serial ports /dev/ttyUSB* or /dev/ttyACM* detected on the target box).")
          
         target_port = None
+        scan_logs = ["=== SCANNING SERIAL PORTS ==="]
         # Smart Port Detection: check which port responds to tech_data command
         for port in ports:
-            check_cmd = f"sg dialout -c 'cd ~/controlboard && timeout 5s ~/controlboard/env/bin/python3 -u dist/controlboard.py read tech_data -p {port}'"
+            scan_logs.append(f"Checking port: {port}")
+            check_cmd = f"sg dialout -c 'cd ~/controlboard && timeout 3s ~/controlboard/env/bin/python3 -u dist/controlboard.py read tech_data -p {port}'"
             stdin_check, stdout_check, stderr_check = ssh.exec_command(check_cmd)
             await asyncio.to_thread(stdout_check.channel.recv_exit_status)
-            out = (await asyncio.to_thread(stdout_check.read)).decode()
+            out = (await asyncio.to_thread(stdout_check.read)).decode().strip()
             if "Update Version:" in out:
+                import re
+                m = re.search(r"Update Version:\s*(\S+)", out)
+                ver = m.group(1) if m else "unknown"
+                scan_logs.append(f"  [OK] Found controller (Version: {ver})")
                 target_port = port
-                break
-         
+            else:
+                err_lines = [line.strip() for line in out.split('\n') if any(w in line.lower() for w in ["error", "exception", "busy", "failed"])]
+                err = err_lines[0] if err_lines else "No response"
+                scan_logs.append(f"  [FAIL] {err}")
+          
         if not target_port:
             # Default to /dev/ttyUSB2 if it exists, otherwise first candidate
             usb2 = "/dev/ttyUSB2"
@@ -292,43 +301,25 @@ async def console_connect(payload: ConsoleConnectRequest, current_user: User = D
                 target_port = usb2
             else:
                 target_port = ports[0]
-         
+          
         channel = await asyncio.to_thread(ssh.invoke_shell)
-         
-        # Run port scan inside the interactive shell so the user sees the output visually
-        cmd_seq = (
-            "cd ~/controlboard && "
-            "echo '=== SCANNING SERIAL PORTS ===' && "
-            "for port in /dev/ttyUSB* /dev/ttyACM*; do "
-            "  if [ -e \"$port\" ]; then "
-            "    echo \"Checking port: $port\" && "
-            "    out=$(sg dialout -c \"timeout 3s ~/controlboard/env/bin/python3 -u dist/controlboard.py read tech_data -p $port\" 2>&1) && "
-            "    if echo \"$out\" | grep -q \"Update Version:\"; then "
-            "      ver=$(echo \"$out\" | grep \"Update Version:\" | sed 's/.*Update Version://' | tr -d '\\r' | xargs) && "
-            "      echo \"  [OK] Found controller (Version: $ver)\"; "
-            "    else "
-            "      err=$(echo \"$out\" | grep -E -i \"error|exception|busy|failed\" | head -n 1 | tr -d '\\r' | xargs) && "
-            "      echo \"  [FAIL] ${err:-No response}\"; "
-            "    fi; "
-            "  fi; "
-            "done && "
-            "echo '=== STARTING INTERACTIVE SHELL ===' && "
-            "sg dialout -c '~/controlboard/env/bin/python3 -u app.py'\n"
-        )
+          
+        # Launch app directly inside the shell (simple and clean, no complex code echoed)
+        cmd_seq = f"cd ~/controlboard && sg dialout -c '~/controlboard/env/bin/python3 -u app.py'\n"
         await asyncio.to_thread(channel.send, cmd_seq)
-         
-        await asyncio.sleep(4.0)
+          
+        await asyncio.sleep(1.5)
         await asyncio.to_thread(channel.send, f"{target_port}\n")
-        await asyncio.sleep(1.0)
+        await asyncio.sleep(0.5)
         await asyncio.to_thread(channel.send, "19200\n")
-        await asyncio.sleep(1.0)
+        await asyncio.sleep(0.5)
         
         CONSOLE_SESSIONS[username] = (ssh, channel)
         out = ""
         if channel.recv_ready():
             out = channel.recv(4096).decode('utf-8', errors='ignore')
-            return {"status": "connected", "banner": clean_ansi(out)}
-        return {"status": "connected", "banner": "Console connection established"}
+            return {"status": "connected", "banner": clean_ansi(out), "scan_logs": scan_logs}
+        return {"status": "connected", "banner": "Console connection established", "scan_logs": scan_logs}
     except HTTPException:
         raise
     except Exception as e:
