@@ -18,6 +18,45 @@ interface CommandItem {
   desc: string;
 }
 
+function getProgressType(line: string): string | null {
+  const match = line.match(/^\[\d{2}:\d{2}:\d{2}\]\s+\[([^\]]+)\]\s+(.*)$/);
+  if (!match) return null;
+  const ip = match[1];
+  const content = match[2].trim();
+
+  // Category 1: Reading package lists
+  if (content.startsWith('Reading package lists...')) {
+    return `${ip}:apt-read-lists`;
+  }
+  // Category 2: Building dependency tree
+  if (content.startsWith('Building dependency tree...')) {
+    return `${ip}:apt-build-tree`;
+  }
+  // Category 3: Reading state info
+  if (content.startsWith('Reading state information...')) {
+    return `${ip}:apt-read-state`;
+  }
+  // Category 4: Apt progress percentage updates (Progress: [X%])
+  if (content.includes('Progress: [')) {
+    return `${ip}:apt-progress`;
+  }
+  // Category 5: apt-get update connection progress (e.g., "0% [Working]", "0% [Connecting to...")
+  if (content.match(/^\d+%\s+\[/)) {
+    return `${ip}:apt-update-working`;
+  }
+  // Category 6: dpkg database reading
+  if (content.startsWith('(Reading database ...')) {
+    return `${ip}:dpkg-read-db`;
+  }
+  // Category 7: dpkg package unpack/setup progress (e.g. Unpacking/Setting up)
+  const unpackMatch = content.match(/^(Unpacking|Preparing to unpack|Setting up)\s+([^\s:]+)/);
+  if (unpackMatch) {
+    return `${ip}:dpkg-action-${unpackMatch[2]}`;
+  }
+
+  return null;
+}
+
 export default function Vsm2FlasherTab() {
   const { t } = useTranslation();
   const [subTab, setSubTab] = useState<'console' | 'logs'>('console');
@@ -61,7 +100,18 @@ export default function Vsm2FlasherTab() {
     
     const sse = new EventSource('/api/vsm2-flasher/stream');
     sse.onmessage = (e) => {
-      setLiveLogs(prev => [...prev, e.data].slice(-500));
+      const newLine = e.data;
+      setLiveLogs(prev => {
+        if (prev.length === 0) return [newLine];
+        const newType = getProgressType(newLine);
+        const lastLine = prev[prev.length - 1];
+        const lastType = getProgressType(lastLine);
+        if (newType && lastType && newType === lastType) {
+          return [...prev.slice(0, -1), newLine];
+        } else {
+          return [...prev, newLine].slice(-500);
+        }
+      });
     };
     return () => sse.close();
   }, []);
@@ -140,7 +190,6 @@ export default function Vsm2FlasherTab() {
         body: JSON.stringify({ ips, username: sshUser, password: sshPass, port: sshPort, advertised_ip: advertisedIp })
       });
       if (res.ok) {
-        alert('Flasher threads spawned! View progress in Live Logs tab.');
         setSubTab('logs');
       } else {
         const err = await res.json();
