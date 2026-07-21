@@ -40,9 +40,8 @@ export default function Vsm2FlasherTab() {
   const [sendingCmd, setSendingCmd] = useState(false);
 
   // Quick actions
-  const [quickActions, setQuickActions] = useState<string[]>([
-    'read temp', 'read version', 'read tech_data', 'write led 1', 'write led 0'
-  ]);
+  const [quickActions, setQuickActions] = useState<string[]>([]);
+  const [newShortcut, setNewShortcut] = useState('');
   
   // Batch Parameters Modal
   const [showBatchModal, setShowBatchModal] = useState(false);
@@ -58,6 +57,7 @@ export default function Vsm2FlasherTab() {
     fetchRepoStatus();
     fetchConsoleCommands();
     detectHostIps();
+    fetchShortcuts();
     
     const sse = new EventSource('/api/vsm2-flasher/stream');
     sse.onmessage = (e) => {
@@ -93,6 +93,33 @@ export default function Vsm2FlasherTab() {
       const res = await fetch('/api/vsm2-flasher/console/commands');
       if (res.ok) setConsoleCommands(await res.json());
     } catch (err) { console.error(err); }
+  };
+
+  const fetchShortcuts = async () => {
+    try {
+      const res = await fetch('/api/vsm2-flasher/console/shortcuts');
+      if (res.ok) setQuickActions(await res.json());
+    } catch (err) { console.error(err); }
+  };
+
+  const saveShortcuts = async (updated: string[]) => {
+    setQuickActions(updated);
+    try {
+      await fetch('/api/vsm2-flasher/console/shortcuts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shortcuts: updated })
+      });
+    } catch (err) { console.error(err); }
+  };
+
+  const handleAddShortcut = () => {
+    const val = newShortcut.trim();
+    if (val && !quickActions.includes(val)) {
+      const updated = [...quickActions, val];
+      saveShortcuts(updated);
+    }
+    setNewShortcut('');
   };
 
   const handleSyncRepo = async () => {
@@ -356,12 +383,40 @@ export default function Vsm2FlasherTab() {
               {consoleConnected && (
                 <div className="pt-2 space-y-2">
                   <h4 className="text-[10px] uppercase font-bold text-zinc-500">Quick Command Shortcuts</h4>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {quickActions.map(action => (
-                      <button key={action} onClick={() => handleConsoleSend(action)} disabled={sendingCmd} className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-[11px] font-mono text-zinc-300 rounded hover:text-indigo-400 transition-colors cursor-pointer">
-                        {action}
+                      <button
+                        key={action}
+                        onClick={() => handleConsoleSend(action)}
+                        disabled={sendingCmd}
+                        className="group flex items-center px-3 py-1.5 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-[11px] font-mono text-zinc-300 rounded hover:text-indigo-400 transition-all cursor-pointer"
+                      >
+                        <span>{action}</span>
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const updated = quickActions.filter(a => a !== action);
+                            saveShortcuts(updated);
+                          }}
+                          className="ml-2 text-zinc-500 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Delete shortcut"
+                        >
+                          ✕
+                        </span>
                       </button>
                     ))}
+                    
+                    <input
+                      type="text"
+                      value={newShortcut}
+                      onChange={(e) => setNewShortcut(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleAddShortcut();
+                      }}
+                      onBlur={handleAddShortcut}
+                      placeholder="+ Add Command"
+                      className="px-3 py-1 bg-zinc-950 border border-dashed border-zinc-800 text-[11px] font-mono text-zinc-400 rounded outline-none focus:border-indigo-500 focus:border-solid transition-colors max-w-[130px]"
+                    />
                   </div>
                 </div>
               )}

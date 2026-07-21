@@ -5,14 +5,16 @@ import importlib.util
 import asyncio
 import queue
 import paramiko
+import json
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import List
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User
 from app.api import deps
-from app.db.session import AsyncSessionLocal
+from app.db.session import AsyncSessionLocal, get_db
 from app.models.system_settings import SystemSettings
 from app.services.vsm2_repo import get_repo_info, sync_repo, REPO_CACHE_DIR
 from app.services.vsm2_worker import FlashWorker, LOG_QUEUE, LOG_HISTORY, SUBSCRIBERS, ACTIVE_TASKS, ACTIVE_TASKS_LOCK, parse_ip_ranges, clean_ansi
@@ -399,3 +401,43 @@ async def console_batch_read(payload: DumpRequest, current_user: User = Depends(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+class ShortcutsSaveRequest(BaseModel):
+    shortcuts: List[str]
+
+@router.get("/console/shortcuts", response_model=List[str])
+async def get_shortcuts(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_user)
+):
+    username = current_user.username
+    key = f"user_shortcuts:{username}"
+    stmt = select(SystemSettings).where(SystemSettings.key == key)
+    result = await db.execute(stmt)
+    record = result.scalar_one_or_none()
+    if record and record.value:
+        try:
+            return json.loads(record.value)
+        except Exception:
+            pass
+    return ["read temp", "read version", "read tech_data", "write led 1", "write led 0"]
+
+@router.post("/console/shortcuts")
+async def save_shortcuts(
+    payload: ShortcutsSaveRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(deps.get_current_user)
+):
+    username = current_user.username
+    key = f"user_shortcuts:{username}"
+    stmt = select(SystemSettings).where(SystemSettings.key == key)
+    result = await db.execute(stmt)
+    record = result.scalar_one_or_none()
+    val_str = json.dumps(payload.shortcuts)
+    if record:
+        record.value = val_str
+    else:
+        record = SystemSettings(key=key, value=val_str)
+        db.add(record)
+    await db.commit()
+    return {"status": "success"}
