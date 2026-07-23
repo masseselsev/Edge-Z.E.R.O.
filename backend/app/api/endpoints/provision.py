@@ -510,8 +510,8 @@ async def get_boot_ipxe(mac: str, db: AsyncSession = Depends(get_db)):
                     initrd_file = f
                     break
 
-        kernel = f"tftp://{settings.API_HOST}/images/{image_dir}/{kernel_file}"
-        initrd = f"tftp://{settings.API_HOST}/images/{image_dir}/{initrd_file}"
+        kernel = f"http://{settings.API_HOST}:{settings.API_PORT}/images/{image_dir}/{kernel_file}"
+        initrd = f"http://{settings.API_HOST}:{settings.API_PORT}/images/{image_dir}/{initrd_file}"
         iso_filename = box.os_image.filename if box.os_image else "debian.iso"
         iso_url = f"http://{settings.API_HOST}:{settings.API_PORT}/isos/{iso_filename}"
         
