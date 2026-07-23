@@ -44,6 +44,12 @@ class ReportPayload(BaseModel):
 
     model_config = {"extra": "allow"}
 
+def clean_mac(mac: str) -> str:
+    s = mac.strip().upper().replace("-", ":")
+    if s.startswith("01:") and len(s) > 17:
+        s = s[3:]
+    return s
+
 @router.post("/{mac}/report")
 async def provision_report(
     mac: str,
@@ -56,7 +62,7 @@ async def provision_report(
     HTTP reporting format {event_type, name, description, result}.
     """
     from sqlalchemy import cast as sa_cast
-    mac_clean = mac.replace("-", ":").upper()
+    mac_clean = clean_mac(mac)
     result = await db.execute(
         select(Box).where(Box.mac_address == sa_cast(mac_clean, MACADDR))
     )
@@ -116,7 +122,7 @@ async def get_system_setting(db: AsyncSession, key: str, default: str) -> str:
 
 @router.get("/{mac}/preseed.cfg")
 async def get_preseed(mac: str, request: Request, db: AsyncSession = Depends(get_db)):
-    mac_clean = mac.replace("-", ":").upper()
+    mac_clean = clean_mac(mac)
     result = await db.execute(
         select(Box)
         .options(joinedload(Box.location))
@@ -189,7 +195,7 @@ async def get_preseed(mac: str, request: Request, db: AsyncSession = Depends(get
 
 @router.get("/{mac}/user-data")
 async def get_user_data(mac: str, request: Request, db: AsyncSession = Depends(get_db)):
-    mac_clean = mac.replace("-", ":").upper()
+    mac_clean = clean_mac(mac)
     result = await db.execute(
         select(Box)
         .options(joinedload(Box.location))
@@ -330,7 +336,7 @@ async def report_hardware_inventory(
     from app.models.box import BoxStatus
     from app.services.telegram import send_telegram_message
     
-    mac_clean = mac.replace("-", ":").upper()
+    mac_clean = clean_mac(mac)
     result = await db.execute(select(Box).where(Box.mac_address == cast(mac_clean, MACADDR)))
     box = result.scalars().first()
     if not box:
@@ -419,7 +425,7 @@ from app.models.user import User
 
 @router.get("/{mac}/callback")
 async def provision_callback(mac: str, db: AsyncSession = Depends(get_db)):
-    mac_clean = mac.replace("-", ":").upper()
+    mac_clean = clean_mac(mac)
     result = await db.execute(select(Box).where(Box.mac_address == cast(mac_clean, MACADDR)))
     box = result.scalars().first()
     
@@ -461,11 +467,11 @@ async def get_boot_ipxe(mac: str, db: AsyncSession = Depends(get_db)):
     """
     Returns a dynamic iPXE script for the box.
     """
-    from sqlalchemy.orm import selectinload
+    mac_clean = clean_mac(mac)
     result = await db.execute(
         select(Box)
         .options(selectinload(Box.os_image))
-        .where(Box.mac_address == cast(mac, MACADDR))
+        .where(Box.mac_address == cast(mac_clean, MACADDR))
     )
     box = result.scalars().first()
     
