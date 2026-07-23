@@ -14,10 +14,10 @@
 ## 🌟 Key Features
 
 ### ⚡ Zero-Touch PXE Provisioning & Auto-Discovery
-* **Universal Auto-Boot:** `dnsmasq` serves `ipxe.efi` and `undionly.kpxe` bootloaders via DHCP/TFTP.
-* **Automatic Discovery (Auto-Discovery):** Real-time DHCP log parser and iPXE loop handler automatically discover new unregistered hardware without infinite boot loops.
+* **Universal High-Speed Auto-Boot:** `dnsmasq` serves `ipxe.efi` and `undionly.kpxe` bootloaders via DHCP/TFTP, while kernel (`vmlinuz`) and ramdisk (`initrd.gz`) delivery streams over **1 Gbps HTTP** (TCP) for sub-second loading.
+* **10-Minute Time-Bounded Auto-Discovery:** Real-time DHCP log parser and iPXE loop handler automatically discover new hardware within a 10-minute sliding window, ignoring inactive or powered-off historical devices.
 * **ProxyDHCP Mode:** Operates seamlessly alongside existing network routers (MikroTik, Cisco, etc.) without DHCP pool conflicts.
-* **Dynamic Templates:** On-the-fly generation of `preseed.cfg` (Debian) and `user-data` (Ubuntu Subiquity) installation configurations customized per device MAC address.
+* **Dynamic Templates & Local Apt Caching:** On-the-fly generation of `preseed.cfg` (Debian) and `user-data` (Ubuntu Subiquity) routed through an embedded local Apt caching proxy (`port 3142`) for gigabit package installation speeds.
 
 ### 🖥️ Location Profiles & Visual OS Configurator (Profiles)
 * **Location Profiles:** Bind devices to physical geographic locations with specific network and regional presets.
@@ -25,9 +25,11 @@
 * **Transparent Password Hashing:** Server-side SHA-512 crypt password hashing for root and non-root user accounts before preseed template rendering.
 
 ### 📊 Real-Time Installation Logs & Progress Tracker
-* **Syslog Receiver (Debian):** Embedded UDP syslog server (`5140/udp`) receives detailed streaming logs from Debian Installer (`d-i preseed/syslog-server`) in real time.
+* **Physical TTY Text Console:** Forces live scrolling text mode (`DEBIAN_FRONTEND=text console=tty0`) on target device monitors, bypassing blue GUI windows.
+* **Zero-Touch Automatic Reboot:** Automated unattended reboot upon completion (`d-i finish-install/reboot_in_progress note`).
+* **Syslog Receiver (Debian):** Embedded UDP syslog server (`5140/udp`) receives detailed streaming logs from Debian Installer (`d-i preseed/syslog-server`) in real time with automatic box fallback matching.
 * **Subiquity HTTP (Ubuntu):** Tracks high-level Ubuntu installation phases via REST `/report` endpoint.
-* **Interactive ConsoleDrawer:** Console drawer featuring a 4-stage live stepper (PXE Boot → OS Install → Run Scripts → Finalizing) and streaming log output.
+* **Interactive ConsoleDrawer & On-Demand Terminal:** Live console drawer with 4-stage progress tracker (PXE Boot → OS Install → Run Scripts → Finalizing) accessible on-demand via a dedicated `Terminal` button in the Fleet view.
 
 ### 💻 Web SSH Terminal
 * **Browser Terminal via xterm.js:** Full-featured terminal with automatic window auto-fitting (`@xterm/addon-fit`) and ANSI color support.
