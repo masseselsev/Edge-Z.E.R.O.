@@ -14,20 +14,17 @@ logger = logging.getLogger(__name__)
 
 # RFC 3164 syslog messages start with <PRI> — strip it if present
 def _strip_syslog_header(raw: str) -> str:
-    if raw.startswith("<"):
-        # Format: <PRI>timestamp hostname process: message
-        # Drop the <PRI> prefix and everything up to and including the first space after hostname.
+    cleaned = raw.strip()
+    if cleaned.startswith("<"):
         try:
-            after_pri = raw[raw.index(">") + 1:]
-            # after_pri is like: "Jan 20 15:04:05 myhost kernel: ..."
-            # We want to keep from the process tag onwards for readability.
-            parts = after_pri.split(" ", 4)
-            if len(parts) >= 5:
-                return parts[4].strip()
-            return after_pri.strip()
-        except (ValueError, IndexError):
-            return raw.strip()
-    return raw.strip()
+            after_pri = cleaned[cleaned.index(">") + 1:].strip()
+            if ":" in after_pri:
+                parts = after_pri.split(":", 1)
+                return parts[1].strip()
+            return after_pri
+        except Exception:
+            return cleaned
+    return cleaned
 
 
 class _SyslogProtocol(asyncio.DatagramProtocol):
@@ -54,7 +51,7 @@ class _SyslogProtocol(asyncio.DatagramProtocol):
         from sqlalchemy import select, cast
         from sqlalchemy.dialects.postgresql import INET
         from app.db.session import AsyncSessionLocal
-        from app.models.box import Box
+        from app.models.box import Box, BoxStatus
         from app.models.provisioning_log import ProvisioningLog
 
         try:
@@ -63,6 +60,15 @@ class _SyslogProtocol(asyncio.DatagramProtocol):
                     select(Box).where(Box.ip_address == cast(source_ip, INET))
                 )
                 box = res.scalars().first()
+                if not box:
+                    # Fallback: match box currently in INSTALLING status
+                    res_inst = await db.execute(
+                        select(Box).where(Box.status == BoxStatus.INSTALLING)
+                    )
+                    box = res_inst.scalars().first()
+                    if box and not box.ip_address:
+                        box.ip_address = source_ip
+
                 if box:
                     db.add(ProvisioningLog(
                         box_id=box.id,
