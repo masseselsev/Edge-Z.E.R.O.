@@ -17,11 +17,7 @@ def _strip_syslog_header(raw: str) -> str:
     cleaned = raw.strip()
     if cleaned.startswith("<"):
         try:
-            after_pri = cleaned[cleaned.index(">") + 1:].strip()
-            if ":" in after_pri:
-                parts = after_pri.split(":", 1)
-                return parts[1].strip()
-            return after_pri
+            return cleaned[cleaned.index(">") + 1:].strip()
         except Exception:
             return cleaned
     return cleaned

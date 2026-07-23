@@ -101,9 +101,12 @@ async def sync_iso_preseeds():
                             with open(fpath, "r", errors="replace") as pf:
                                 content = pf.read()
                                 cleaned_lines = []
+                                skip_multiline = False
                                 for line in content.splitlines():
-                                    if "preseed/late_command" in line and "/cdrom/" in line:
+                                    stripped = line.strip()
+                                    if "preseed/late_command" in line or skip_multiline:
                                         cleaned_lines.append(f"# [Netboot Overridden] {line}")
+                                        skip_multiline = stripped.endswith("\\")
                                     else:
                                         cleaned_lines.append(line)
                                 combined_content += f"\n# --- Extracted from ISO: {ext_name} ---\n" + "\n".join(cleaned_lines) + "\n"
