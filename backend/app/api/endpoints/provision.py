@@ -5,8 +5,9 @@ from sqlalchemy.orm import joinedload, selectinload
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import Response
 
+from app.core.config import settings
 from app.db.session import get_db
-from app.models.box import Box
+from app.models.box import Box, BoxStatus
 from app.models.vpn_credential import VpnCredential
 from app.models.provisioning_log import ProvisioningLog
 from app.models.system_settings import SystemSettings
