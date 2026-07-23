@@ -569,7 +569,6 @@ async def batch_provision(
     res_img = await db.execute(
         select(OsImageModel)
         .where(OsImageModel.status == ImageStatus.READY)
-        .order_by(OsImageModel.created_at.desc())
     )
     latest_img = res_img.scalars().first()
 
