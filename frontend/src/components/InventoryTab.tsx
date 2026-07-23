@@ -354,16 +354,14 @@ export default function InventoryTab() {
                   <td className="px-6 py-4">{box.location ? box.location.name : '—'}</td>
                   <td className="px-6 py-4">{getStatusBadge(box)}</td>
                   <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                    {box.status !== 'INSTALLING' && (
-                      <button
-                        onClick={() => handleStartProvisioning(box.id)}
-                        className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
-                        title="Start Provisioning / Install OS"
-                      >
-                        <PlayCircle size={14} />
-                        <span>Install</span>
-                      </button>
-                    )}
+                    <button
+                      onClick={() => handleStartProvisioning(box.id)}
+                      className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+                      title="Start Provisioning / Install OS"
+                    >
+                      <PlayCircle size={14} />
+                      <span>{box.status === 'INSTALLING' ? 'Re-install' : 'Install'}</span>
+                    </button>
                     <button
                       onClick={() => setConsoleBox({ id: box.id, sn: box.internal_sn, status: box.status, progress: box.installation_progress })}
                       className="p-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 rounded transition-all cursor-pointer flex items-center gap-1"
