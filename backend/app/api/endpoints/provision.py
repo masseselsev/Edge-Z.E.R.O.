@@ -528,36 +528,26 @@ async def get_boot_ipxe(mac: str, db: AsyncSession = Depends(get_db)):
     if box.status == BoxStatus.INSTALLING:
         preseed_url = f"http://{settings.API_HOST}:{settings.API_PORT}/api/provision/{mac}/preseed.cfg"
         
-        # Determine image directory from os_image filename or pick first available custom image
-        image_dir = "debian-installer"
-        if box.os_image:
-            image_dir = box.os_image.filename.replace(".iso", "").replace(".ISO", "")
-        
-        base_img_path = "/mnt/infra_config/tftp/images"
-        img_path = os.path.join(base_img_path, image_dir)
-        if (not os.path.exists(img_path) or image_dir == "debian-installer") and os.path.exists(base_img_path):
-            available_dirs = [d for d in os.listdir(base_img_path) if d != "debian-installer" and os.path.isdir(os.path.join(base_img_path, d))]
-            if available_dirs:
-                image_dir = available_dirs[0]
-                img_path = os.path.join(base_img_path, image_dir)
+        # For PXE netboot, use netboot kernel and initrd (debian-installer) so cdrom-detect is not triggered.
+        # Preseed, packages, partitioning recipes, and firstboot scripts are loaded from the custom ISO over HTTP.
+        netboot_dir = "debian-installer"
         kernel_file = "vmlinuz"
         initrd_file = "initrd.gz"
-        
-        if os.path.exists(img_path):
-            files = os.listdir(img_path)
-            # Find kernel (vmlinuz or linux)
+
+        netboot_path = os.path.join(INFRA_CONFIG_DIR, "tftp", "images", netboot_dir)
+        if os.path.exists(netboot_path):
+            files = os.listdir(netboot_path)
             for f in ["vmlinuz", "linux"]:
                 if f in files:
                     kernel_file = f
                     break
-            # Find initrd (initrd, initrd.gz, initrd.lz)
-            for f in ["initrd", "initrd.gz", "initrd.lz"]:
+            for f in ["initrd.gz", "initrd", "initrd.lz"]:
                 if f in files:
                     initrd_file = f
                     break
 
-        kernel = f"http://{settings.API_HOST}:{settings.API_PORT}/images/{image_dir}/{kernel_file}"
-        initrd = f"http://{settings.API_HOST}:{settings.API_PORT}/images/{image_dir}/{initrd_file}"
+        kernel = f"http://{settings.API_HOST}:{settings.API_PORT}/images/{netboot_dir}/{kernel_file}"
+        initrd = f"http://{settings.API_HOST}:{settings.API_PORT}/images/{netboot_dir}/{initrd_file}"
         iso_filename = box.os_image.filename if box.os_image else "debian.iso"
         iso_url = f"http://{settings.API_HOST}:{settings.API_PORT}/isos/{iso_filename}"
         
