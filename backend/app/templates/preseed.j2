@@ -41,10 +41,48 @@ d-i time/zone string {{ timezone | default('UTC') }}
 d-i clock-setup/ntp boolean true
 d-i clock-setup/ntp-server string {{ ntp_server | default('pool.ntp.org') }}
 
-# Partitioning
+# Partitioning (supports both UEFI and Legacy BIOS)
 d-i partman-auto/method string regular
-d-i partman-auto/choose_recipe select atomic
-d-i partman/confirm_write_new_label boolean true
+d-i partman-auto/choose_recipe select edge-box
+
+d-i partman-auto/expert_recipe string \
+      edge-box :: \
+              538 538 1075 free \
+                      $iflabel{ gpt } \
+                      $reusemethod{ } \
+                      method{ efi } \
+                      format{ } \
+              . \
+              208 208 208 ext2 \
+                      $primary{ } $bootable{ } \
+                      method{ format } format{ } \
+                      use_filesystem{ } filesystem{ ext2 } \
+                      mountpoint{ /boot } \
+                      label{ edgeboot } \
+              . \
+              16384 16384 16384 ext4 \
+                      $primary{ } \
+                      method{ format } format{ } \
+                      use_filesystem{ } filesystem{ ext4 } \
+                      mountpoint{ / } \
+                      label{ edgeroot } \
+              . \
+              1072 1072 1072 ext4 \
+                      method{ format } format{ } \
+                      use_filesystem{ } filesystem{ ext4 } \
+                      mountpoint{ /var/log/edge } \
+                      label{ edgelog } \
+              . \
+              4083 4083 -1 ext4 \
+                      method{ format } format{ } \
+                      use_filesystem{ } filesystem{ ext4 } \
+                      mountpoint{ /var/opt/edge } \
+                      label{ edgestor } \
+              .
+
+d-i partman-basicfilesystems/no_swap boolean false
+d-i partman-efi/non_efi_system boolean true
+d-i partman-partitioning/confirm_write_new_label boolean true
 d-i partman/choose_partition select finish
 d-i partman/confirm boolean true
 d-i partman/confirm_nooverwrite boolean true
