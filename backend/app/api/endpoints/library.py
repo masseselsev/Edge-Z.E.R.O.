@@ -111,6 +111,35 @@ async def _extract_iso_assets(iso_path: str, image_id: UUID, filename: str):
                     print(f"Subprocess error for pattern {pattern}: {e}")
                     continue
 
+            # Extract embedded preseed / configuration files from ISO
+            preseed_patterns = ["preseed.cfg", "*.preseed", "simple-cdd/*.preseed", "isolinux/*.cfg", "txt.cfg"]
+            for p_pattern in preseed_patterns:
+                try:
+                    p_proc = await asyncio.create_subprocess_exec(
+                        "7z", "e", iso_path, p_pattern, "-r", "-y", f"-o{target_dir}",
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    await p_proc.communicate()
+                except Exception:
+                    pass
+
+            # Combine extracted preseed directives into target_dir/iso_preseed.cfg
+            combined_content = ""
+            for fname in os.listdir(target_dir):
+                if (fname.endswith(".preseed") or (fname.endswith(".cfg") and fname != "iso_preseed.cfg")) and fname not in ["vmlinuz", "initrd.gz"]:
+                    fpath = os.path.join(target_dir, fname)
+                    try:
+                        with open(fpath, "r", errors="replace") as pf:
+                            combined_content += f"\n# --- Extracted from ISO: {fname} ---\n" + pf.read() + "\n"
+                    except Exception:
+                        pass
+            
+            if combined_content.strip():
+                with open(os.path.join(target_dir, "iso_preseed.cfg"), "w") as out_pf:
+                    out_pf.write(combined_content)
+                print(f"Extracted embedded ISO preseed config to {image_dir_name}/iso_preseed.cfg")
+
             status = ImageStatus.READY if found_any else ImageStatus.ERROR
             
             # Update DB

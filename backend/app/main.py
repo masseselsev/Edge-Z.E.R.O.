@@ -64,6 +64,49 @@ async def monitor_heartbeats():
             import sys
             print(f"Error in monitor_heartbeats: {e}", file=sys.stderr)
 
+async def sync_iso_preseeds():
+    """
+    Scans /mnt/infra_config/isos and extracts embedded preseed files for any un-extracted ISOs.
+    """
+    import os, asyncio
+    iso_dir = "/mnt/infra_config/isos"
+    tftp_img_dir = "/mnt/infra_config/tftp/images"
+    if not os.path.exists(iso_dir):
+        return
+    for fname in os.listdir(iso_dir):
+        if fname.lower().endswith(".iso"):
+            image_dir_name = fname.replace(".iso", "").replace(".ISO", "")
+            target_dir = os.path.join(tftp_img_dir, image_dir_name)
+            os.makedirs(target_dir, exist_ok=True)
+            iso_path = os.path.join(iso_dir, fname)
+            iso_preseed_file = os.path.join(target_dir, "iso_preseed.cfg")
+            if not os.path.exists(iso_preseed_file):
+                print(f"[Startup] Extracting embedded preseed files from {fname}...")
+                preseed_patterns = ["preseed.cfg", "*.preseed", "simple-cdd/*.preseed", "isolinux/*.cfg", "txt.cfg"]
+                for p_pattern in preseed_patterns:
+                    try:
+                        p_proc = await asyncio.create_subprocess_exec(
+                            "7z", "e", iso_path, p_pattern, "-r", "-y", f"-o{target_dir}",
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE
+                        )
+                        await p_proc.communicate()
+                    except Exception:
+                        pass
+                combined_content = ""
+                for ext_name in os.listdir(target_dir):
+                    if (ext_name.endswith(".preseed") or (ext_name.endswith(".cfg") and ext_name != "iso_preseed.cfg")) and ext_name not in ["vmlinuz", "initrd.gz"]:
+                        fpath = os.path.join(target_dir, ext_name)
+                        try:
+                            with open(fpath, "r", errors="replace") as pf:
+                                combined_content += f"\n# --- Extracted from ISO: {ext_name} ---\n" + pf.read() + "\n"
+                        except Exception:
+                            pass
+                if combined_content.strip():
+                    with open(iso_preseed_file, "w") as out_pf:
+                        out_pf.write(combined_content)
+                    print(f"[Startup] Extracted embedded ISO preseed config for {fname} -> {iso_preseed_file}")
+
 @app.on_event("startup")
 async def startup_event():
     import asyncio
@@ -79,7 +122,8 @@ async def startup_event():
         async with AsyncSessionLocal() as db:
             await regenerate_dnsmasq_conf(db)
             await generate_pxe_config(db)
-            print("Successfully synchronized PXE/DNSMasq configurations from database.")
+            await sync_iso_preseeds()
+            print("Successfully synchronized PXE/DNSMasq configurations and ISO preseeds.")
     except Exception as e:
         import sys
         print(f"Error regenerating PXE configs on startup: {e}", file=sys.stderr)

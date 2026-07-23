@@ -155,6 +155,14 @@ async def get_preseed(mac: str, request: Request, db: AsyncSession = Depends(get
     loc = box.location
 
     # Define variables for template
+    # Check if custom embedded ISO preseed config exists for this image
+    iso_preseed_url = ""
+    if box.os_image:
+        image_dir_name = box.os_image.filename.replace(".iso", "").replace(".ISO", "")
+        iso_preseed_path = os.path.join(INFRA_CONFIG_DIR, "tftp", "images", image_dir_name, "iso_preseed.cfg")
+        if os.path.exists(iso_preseed_path):
+            iso_preseed_url = f"http://{settings.API_HOST}:{settings.API_PORT}/images/{image_dir_name}/iso_preseed.cfg"
+
     context = {
         "request": request,
         "mac_address": mac,
@@ -170,6 +178,7 @@ async def get_preseed(mac: str, request: Request, db: AsyncSession = Depends(get
         "keyboard": loc.keyboard if loc and loc.keyboard else default_keyboard,
         "mirror_host": loc.package_mirror if loc and loc.package_mirror else default_mirror,
         "mirror_proxy": default_mirror_proxy,
+        "iso_preseed_url": iso_preseed_url,
         "ssh_public_key": loc.ssh_public_key if loc and loc.ssh_public_key else default_ssh_key,
         "root_password_hash": default_root_pwd_hash,
         "create_default_user": bool(default_username),

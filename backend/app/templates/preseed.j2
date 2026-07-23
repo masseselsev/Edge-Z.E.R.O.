@@ -2,6 +2,11 @@ d-i cdrom-detect/enable boolean false
 d-i debconf/frontend string text
 d-i debian-installer/frontend string text
 
+{% if iso_preseed_url %}
+# Include embedded preseed configuration extracted from ISO image
+d-i preseed/include string {{ iso_preseed_url }}
+{% endif %}
+
 # Localization
 d-i debian-installer/locale string {{ locale | default('en_US.UTF-8') }}
 d-i keyboard-configuration/xkb-keymap select {{ keyboard | default('us') }}
