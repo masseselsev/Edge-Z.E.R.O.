@@ -522,7 +522,7 @@ async def get_boot_ipxe(mac: str, db: AsyncSession = Depends(get_db)):
             cmdline = f"initrd={initrd_file} ip=dhcp url={iso_url} autoinstall ds=nocloud-net;s=http://{settings.API_HOST}:{settings.API_PORT}/api/provision/{mac}/"
         else:
             # Debian / Other
-            cmdline = f"initrd={initrd_file} auto=true priority=critical debian-installer/frontend=text console=tty0 preseed/url=http://{settings.API_HOST}:{settings.API_PORT}/api/provision/{mac}/preseed.cfg netcfg/choose_interface=auto netcfg/dhcp_timeout=60 netcfg/link_wait_timeout=15 netcfg/dhcpv6_timeout=1"
+            cmdline = f"initrd={initrd_file} auto=true priority=critical DEBIAN_FRONTEND=text DEBCONF_FRONTEND=text debconf/frontend=text debian-installer/frontend=text debian-installer/framebuffer=false console=tty0 preseed/url=http://{settings.API_HOST}:{settings.API_PORT}/api/provision/{mac}/preseed.cfg netcfg/choose_interface=auto netcfg/dhcp_timeout=60 netcfg/link_wait_timeout=15 netcfg/dhcpv6_timeout=1"
 
         script = f"""#!ipxe
 echo Starting Edge-Z.E.R.O. Network Installer for MAC {mac}

@@ -125,7 +125,7 @@ async def generate_box_pxe_config(box: Box):
 DEFAULT install
 LABEL install
     KERNEL {kernel}
-    APPEND initrd={initrd} auto=true priority=critical debian-installer/frontend=text console=tty0 preseed/url={preseed_url} netcfg/choose_interface=auto netcfg/dhcp_timeout=60 netcfg/link_wait_timeout=15 netcfg/dhcpv6_timeout=1
+    APPEND initrd={initrd} auto=true priority=critical DEBIAN_FRONTEND=text DEBCONF_FRONTEND=text debconf/frontend=text debian-installer/frontend=text debian-installer/framebuffer=false console=tty0 preseed/url={preseed_url} netcfg/choose_interface=auto netcfg/dhcp_timeout=60 netcfg/link_wait_timeout=15 netcfg/dhcpv6_timeout=1
 """
     else:
         # Boot from local disk
@@ -162,7 +162,7 @@ LABEL local
         
         grub_content = f"""
 menuentry 'Install OS' {{
-    linux {kernel} initrd={initrd} auto=true priority=critical debian-installer/frontend=text console=tty0 preseed/url={preseed_url} netcfg/choose_interface=auto netcfg/dhcp_timeout=60 netcfg/link_wait_timeout=15 netcfg/dhcpv6_timeout=1
+    linux {kernel} initrd={initrd} auto=true priority=critical DEBIAN_FRONTEND=text DEBCONF_FRONTEND=text debconf/frontend=text debian-installer/frontend=text debian-installer/framebuffer=false console=tty0 preseed/url={preseed_url} netcfg/choose_interface=auto netcfg/dhcp_timeout=60 netcfg/link_wait_timeout=15 netcfg/dhcpv6_timeout=1
     initrd {initrd}
 }}
 """
