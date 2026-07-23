@@ -122,19 +122,28 @@ export default function InventoryTab() {
     });
   };
 
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  };
+
   const handleAddBox = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const res = await fetch('/api/boxes/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(newBox)
       });
       if (res.ok) {
         handleCloseAddModal();
         fetchData();
       } else {
-        const errorData = await res.json();
+        const errorData = await res.json().catch(() => ({}));
         alert(`Failed to add box: ${errorData.detail || 'Unknown error'}`);
       }
     } catch (err) {
@@ -146,11 +155,14 @@ export default function InventoryTab() {
     try {
       const res = await fetch('/api/boxes/batch/provision', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify([id])
       });
       if (res.ok) {
         fetchData();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(`Failed to start provisioning: ${errorData.detail || res.statusText}`);
       }
     } catch (err) {
       console.error('Failed to start provisioning:', err);
@@ -161,9 +173,15 @@ export default function InventoryTab() {
     if (!confirm('Are you sure you want to delete this box?')) return;
     try {
       const res = await fetch(`/api/boxes/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: getAuthHeaders()
       });
-      if (res.ok) fetchData();
+      if (res.ok) {
+        fetchData();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(`Failed to delete box: ${errorData.detail || res.statusText}`);
+      }
     } catch (err) {
       console.error('Failed to delete box:', err);
     }
